@@ -1,0 +1,14 @@
+import numpy as np
+import pandas as pd
+
+def predict(data):
+    """
+    Placeholder prediction function for TOI model
+    Returns random predictions for demonstration
+    """
+    if not isinstance(data, pd.DataFrame):
+        return "Invalid data"
+    
+    # Generate random predictions (0 or 1) for each row
+    predictions = np.random.choice([0, 1], size=len(data), p=[0.7, 0.3])
+    return predictions
