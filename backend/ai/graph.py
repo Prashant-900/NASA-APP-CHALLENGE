@@ -43,73 +43,15 @@ class RAGGraph:
     
     def process_message(self, message: str, table: str = None) -> Dict[str, Any]:
         try:
-            # Parse request
-            state = self._parse_request(message, table)
-            
-            # Validate table
-            if not state["table"]:
+            if not table:
                 return {
-                    "response": "Please specify which table to query (k2, toi, or cum) using the dropdown above.",
+                    "response": "Please specify which table to query using the dropdown above.",
                     "data": None,
                     "error": None
                 }
             
-            # Check if user wants to execute a query or just chat
-            if not self.llm.should_execute_query(message):
-                response = self.llm.generate_direct_response(message, state["table"])
-                return {
-                    "response": response,
-                    "data": None,
-                    "error": None
-                }
-            
-            # Get available columns
-            try:
-                available_columns = self.db.get_table_columns(state["table"])
-            except Exception as e:
-                return {
-                    "response": f"Error accessing {state['table'].upper()} table: {str(e)}",
-                    "data": None,
-                    "error": str(e)
-                }
-            
-            # Generate SQL query using AI
-            try:
-                sql_query = self.llm.generate_sql_query(message, state["table"], available_columns)
-                print(f"Generated SQL: {sql_query}")  # Debug log
-            except Exception as e:
-                return {
-                    "response": f"Error generating query: {str(e)}",
-                    "data": None,
-                    "error": str(e)
-                }
-            
-            # Execute the AI-generated query
-            try:
-                result = self.db.execute_custom_query(sql_query)
-                state["query_result"] = result
-            except Exception as e:
-                return {
-                    "response": f"Query error: {str(e)}\n\nSQL: `{sql_query}`",
-                    "data": None,
-                    "error": str(e)
-                }
-            
-            # Generate markdown response
-            try:
-                response = self.llm.generate_response(message, state["query_result"], state["table"])
-                
-                return {
-                    "response": response,
-                    "data": state["query_result"],
-                    "error": None
-                }
-            except Exception as e:
-                return {
-                    "response": f"Error generating response: {str(e)}",
-                    "data": state["query_result"],
-                    "error": str(e)
-                }
+            # Let LLM handle the entire process with tools
+            return self.llm.process_with_tools(message, table, self.db)
                 
         except Exception as e:
             return {
@@ -142,3 +84,4 @@ class RAGGraph:
                 "error": str(e),
                 "data": None
             }
+    

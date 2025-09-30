@@ -220,10 +220,8 @@ def chat_stream():
             try:
                 result = rag_system.process_message(message, table)
                 
-                # Check if this should open a new tab with data
-                if result.get('data') and len(result['data']) > 50:
-                    # For large datasets, indicate new tab should open
-                    result['open_new_tab'] = True
+                # Determine if should open new tab based on LLM decision
+                should_open_tab = result.get('show_in_query_tab', False)
                 
                 # Stream the response word by word
                 words = result['response'].split(' ')
@@ -232,7 +230,8 @@ def chat_stream():
                         'chunk': word + (' ' if i < len(words) - 1 else ''),
                         'done': i == len(words) - 1,
                         'data': result.get('data') if i == len(words) - 1 else None,
-                        'open_new_tab': result.get('open_new_tab', False) if i == len(words) - 1 else False
+                        'open_new_tab': should_open_tab if i == len(words) - 1 else False,
+                        'response_type': result.get('response_type', 'ai_only') if i == len(words) - 1 else None
                     }
                     yield f"data: {json.dumps(chunk)}\n\n"
                     

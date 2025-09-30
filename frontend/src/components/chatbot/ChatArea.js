@@ -43,7 +43,8 @@ function ChatArea({ isOpen, onClose, currentTable, onOpenNewTab }) {
         }
         
         if (chunk.done && chunk.open_new_tab && chunk.data) {
-          onOpenNewTab?.(chunk.data, selectedTable);
+          // Pass response type to determine how to handle the data
+          onOpenNewTab?.(chunk.data, selectedTable, fullResponse);
         }
         
         if (chunk.error) {
