@@ -1,4 +1,5 @@
-from flask import Flask, jsonify, request, send_file
+from flask import Flask, jsonify, request, send_file, Response
+import json
 from flask_cors import CORS
 import psycopg2
 import pandas as pd
@@ -9,6 +10,7 @@ from werkzeug.utils import secure_filename
 from k2_wrapper import predict as k2_predict
 from toi_wrapper import predict as toi_predict
 from cum_wrapper import predict as cum_predict
+from ai import RAGGraph
 
 app = Flask(__name__)
 CORS(app)
@@ -177,6 +179,96 @@ def download_file(filename):
             return send_file(filepath, as_attachment=True, download_name=filename)
         else:
             return jsonify({'error': 'File not found'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# Initialize RAG system
+rag_system = RAGGraph()
+
+@app.route('/api/chat', methods=['POST'])
+def chat():
+    try:
+        data = request.get_json()
+        message = data.get('message', '')
+        table = data.get('table', '')
+        
+        if not message:
+            return jsonify({'error': 'Message is required'}), 400
+        
+        result = rag_system.process_message(message, table)
+        
+        return jsonify({
+            'response': result['response'],
+            'data': result.get('data'),
+            'error': result.get('error')
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/chat/stream', methods=['POST'])
+def chat_stream():
+    try:
+        data = request.get_json()
+        message = data.get('message', '')
+        table = data.get('table', '')
+        
+        if not message:
+            return jsonify({'error': 'Message is required'}), 400
+        
+        def generate():
+            try:
+                result = rag_system.process_message(message, table)
+                
+                # Check if this should open a new tab with data
+                if result.get('data') and len(result['data']) > 50:
+                    # For large datasets, indicate new tab should open
+                    result['open_new_tab'] = True
+                
+                # Stream the response word by word
+                words = result['response'].split(' ')
+                for i, word in enumerate(words):
+                    chunk = {
+                        'chunk': word + (' ' if i < len(words) - 1 else ''),
+                        'done': i == len(words) - 1,
+                        'data': result.get('data') if i == len(words) - 1 else None,
+                        'open_new_tab': result.get('open_new_tab', False) if i == len(words) - 1 else False
+                    }
+                    yield f"data: {json.dumps(chunk)}\n\n"
+                    
+            except Exception as e:
+                error_chunk = {
+                    'chunk': f"Error: {str(e)}",
+                    'done': True,
+                    'error': str(e)
+                }
+                yield f"data: {json.dumps(error_chunk)}\n\n"
+        
+        return Response(generate(), mimetype='text/plain')
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/query/direct', methods=['POST'])
+def execute_direct_query():
+    try:
+        data = request.get_json()
+        table = data.get('table', '')
+        
+        if not table:
+            return jsonify({'error': 'Table is required'}), 400
+        
+        result = rag_system.execute_direct_query(table)
+        
+        if result.get('error'):
+            return jsonify({'error': result['error']}), 500
+        
+        return jsonify({
+            'data': result['data'],
+            'table': result['table'],
+            'count': result['count']
+        })
+        
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

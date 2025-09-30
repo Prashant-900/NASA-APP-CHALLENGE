@@ -4,9 +4,7 @@ import {
   TableRow, Paper, CircularProgress, Box,
   TablePagination
 } from '@mui/material';
-import axios from 'axios';
-
-const API_BASE = "http://localhost:5000/api"
+import { dataApi } from '../api';
 
 function DataTable({ tableName, searchTerm, searchColumn }) {
   const [data, setData] = useState([]);
@@ -28,7 +26,7 @@ function DataTable({ tableName, searchTerm, searchColumn }) {
         search_column: searchColumn
       };
 
-      const response = await axios.get(`${API_BASE}/table/${tableName}/data`, { params });
+      const response = await dataApi.getTableData(tableName, params);
       const result = response.data;
       
       setData(result.data);

@@ -5,57 +5,53 @@ import {
   TableHead, TableRow, Chip
 } from '@mui/material';
 import { CloudUpload, Download } from '@mui/icons-material';
+import { dataApi } from '../api';
 
-const FileUpload = () => {
-  const [file, setFile] = useState(null);
-  const [modelType, setModelType] = useState('k2');
-  const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState(null);
-  const [error, setError] = useState('');
+const FileUpload = ({ persistentState = {}, onStateChange }) => {
+  const {
+    file = null,
+    modelType = 'k2',
+    loading = false,
+    results = null,
+    error = ''
+  } = persistentState;
+  
+  const updateState = (updates) => {
+    onStateChange?.(updates);
+  };
 
   const handleFileChange = (event) => {
     const selectedFile = event.target.files[0];
     if (selectedFile) {
       const fileType = selectedFile.name.split('.').pop().toLowerCase();
       if (!['csv', 'xlsx', 'xls'].includes(fileType)) {
-        setError('Please select a CSV or Excel file');
+        updateState({ error: 'Please select a CSV or Excel file' });
         return;
       }
-      setFile(selectedFile);
-      setError('');
+      updateState({ file: selectedFile, error: '' });
     }
   };
 
   const handleUpload = async () => {
     if (!file) {
-      setError('Please select a file first');
+      updateState({ error: 'Please select a file first' });
       return;
     }
 
-    setLoading(true);
-    setError('');
+    updateState({ loading: true, error: '' });
     
     const formData = new FormData();
     formData.append('file', file);
     formData.append('type', modelType);
 
     try {
-      const response = await fetch(`http://localhost:5000/api/predict`, {
-        method: 'POST',
-        body: formData,
-      });
+      const response = await dataApi.predict(formData);
 
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.error || 'Prediction failed');
-      }
-
-      setResults(data);
+      updateState({ results: response.data });
     } catch (err) {
-      setError(err.message);
+      updateState({ error: err.message });
     } finally {
-      setLoading(false);
+      updateState({ loading: false });
     }
   };
 
@@ -96,11 +92,11 @@ const FileUpload = () => {
             startIcon={<CloudUpload />}
             sx={{ 
               minWidth: 200,
-              borderColor: '#007bff',
-              color: '#007bff',
+              borderColor: 'primary.main',
+              color: 'primary.main',
               '&:hover': {
-                borderColor: '#0056b3',
-                backgroundColor: 'rgba(0, 123, 255, 0.04)',
+                borderColor: 'primary.dark',
+                backgroundColor: 'rgba(0, 0, 0, 0.04)',
               }
             }}
           >
@@ -118,7 +114,7 @@ const FileUpload = () => {
             <Select
               value={modelType}
               label="Model Type"
-              onChange={(e) => setModelType(e.target.value)}
+              onChange={(e) => updateState({ modelType: e.target.value })}
             >
               <MenuItem value="k2">K2</MenuItem>
               <MenuItem value="toi">TOI</MenuItem>
@@ -139,9 +135,9 @@ const FileUpload = () => {
           disabled={!file || loading}
           sx={{ 
             mr: 2,
-            backgroundColor: '#007bff',
+            backgroundColor: 'primary.main',
             '&:hover': {
-              backgroundColor: '#0056b3',
+              backgroundColor: 'primary.dark',
             }
           }}
         >
@@ -154,11 +150,11 @@ const FileUpload = () => {
             startIcon={<Download />}
             onClick={downloadResults}
             sx={{
-              borderColor: '#007bff',
-              color: '#007bff',
+              borderColor: 'primary.main',
+              color: 'primary.main',
               '&:hover': {
-                borderColor: '#0056b3',
-                backgroundColor: 'rgba(0, 123, 255, 0.04)',
+                borderColor: 'primary.dark',
+                backgroundColor: 'rgba(0, 0, 0, 0.04)',
               }
             }}
           >

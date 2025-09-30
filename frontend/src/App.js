@@ -17,25 +17,45 @@ import {
   ThemeProvider,
   CssBaseline,
 } from "@mui/material";
-import { Brightness4, Brightness7, Search } from "@mui/icons-material";
+import { Brightness4, Brightness7, Chat, Close } from "@mui/icons-material";
 import { motion } from 'framer-motion';
 import DataTable from "./components/DataTable";
 import FileUpload from "./components/FileUpload";
 import ChatArea from "./components/chatbot/ChatArea";
+import QueryResultsTab from "./components/QueryResultsTab";
 import { lightTheme, darkTheme } from "./theme";
-import axios from "axios";
-
-const API_BASE = "http://localhost:5000/api";
+import { dataApi } from "./api";
 
 function App() {
   const [selectedTab, setSelectedTab] = useState(0);
-  const [selectedTable, setSelectedTable] = useState("k2");
   const [tables, setTables] = useState([]);
-  const [columns, setColumns] = useState([]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [searchColumn, setSearchColumn] = useState("");
   const [darkMode, setDarkMode] = useState(false);
-  const [chatOpen, setChatOpen] = useState(false);
+  
+  // Tab-specific state persistence
+  const [tabStates, setTabStates] = useState({
+    0: { // Data Explorer
+      selectedTable: "k2",
+      columns: [],
+      searchTerm: "",
+      searchColumn: "",
+      chatOpen: false
+    },
+    1: { // Predict
+      file: null,
+      modelType: 'k2',
+      loading: false,
+      results: null,
+      error: ''
+    }
+  });
+  
+  // Dynamic tabs for query results
+  const [dynamicTabs, setDynamicTabs] = useState([]);
+  const [tabCounter, setTabCounter] = useState(2);
+  
+  // Current tab state shortcuts
+  const currentTabState = tabStates[selectedTab] || {};
+  const { selectedTable, columns, searchTerm, searchColumn, chatOpen } = currentTabState;
 
   const theme = darkMode ? darkTheme : lightTheme;
 
@@ -51,7 +71,7 @@ function App() {
 
   const fetchTables = async () => {
     try {
-      const response = await axios.get(`${API_BASE}/tables`);
+      const response = await dataApi.getTables();
       setTables(response.data);
     } catch (error) {
       console.error("Error fetching tables:", error);
@@ -60,14 +80,21 @@ function App() {
 
   const fetchColumns = async (tableName) => {
     try {
-      const response = await axios.get(
-        `${API_BASE}/table/${tableName}/columns`
-      );
-      setColumns(response.data);
-      setSearchColumn(response.data[0] || "");
+      const response = await dataApi.getTableColumns(tableName);
+      updateTabState(0, { 
+        columns: response.data,
+        searchColumn: response.data[0] || ""
+      });
     } catch (error) {
       console.error("Error fetching columns:", error);
     }
+  };
+  
+  const updateTabState = (tabIndex, updates) => {
+    setTabStates(prev => ({
+      ...prev,
+      [tabIndex]: { ...prev[tabIndex], ...updates }
+    }));
   };
 
   const handleTabChange = (event, newValue) => {
@@ -75,8 +102,10 @@ function App() {
   };
 
   const handleTableChange = (event, newValue) => {
-    setSelectedTable(newValue);
-    setSearchTerm("");
+    updateTabState(0, {
+      selectedTable: newValue,
+      searchTerm: ""
+    });
   };
 
   const toggleDarkMode = () => {
@@ -84,7 +113,26 @@ function App() {
   };
 
   const toggleChat = () => {
-    setChatOpen(!chatOpen);
+    updateTabState(0, { chatOpen: !chatOpen });
+  };
+  
+  const handleOpenNewTab = (data, table) => {
+    const newTab = {
+      id: tabCounter,
+      label: `${table.toUpperCase()} Results`,
+      data: data,
+      table: table
+    };
+    setDynamicTabs(prev => [...prev, newTab]);
+    setTabCounter(prev => prev + 1);
+    setSelectedTab(tabCounter);
+  };
+  
+  const handleCloseTab = (tabId) => {
+    setDynamicTabs(prev => prev.filter(tab => tab.id !== tabId));
+    if (selectedTab === tabId) {
+      setSelectedTab(0);
+    }
   };
 
   return (
@@ -97,32 +145,60 @@ function App() {
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
+              backgroundColor: 'background.default',
             }}
           >
-            <Typography variant="h6" component="div">
+            <Typography variant="h6" component="div" sx={{color: "primary.main"}}>
               Exoplanet Detection Dashboard
             </Typography>
             <Tabs
               value={selectedTab}
               onChange={handleTabChange}
-              TabIndicatorProps={{ sx: { backgroundColor: '#007bff' } }}
+              TabIndicatorProps={{ sx: { backgroundColor: 'primary.main' } }}
+              variant="scrollable"
+              scrollButtons="auto"
             >
               <Tab
                 label="Data Explorer"
                 sx={{
                   color: 'text.secondary',
-                  '&.Mui-selected': { color: '#007bff' },
+                  '&.Mui-selected': { color: 'primary.main' },
                 }}
               />
               <Tab
                 label="Predict"
                 sx={{
                   color: 'text.secondary',
-                  '&.Mui-selected': { color: '#007bff' },
+                  '&.Mui-selected': { color: 'primary.main' },
                 }}
               />
+              {dynamicTabs.map((tab) => (
+                <Tab
+                  key={tab.id}
+                  label={
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      {tab.label}
+                      <IconButton
+                        size="small"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCloseTab(tab.id);
+                        }}
+                        sx={{ ml: 1, p: 0.5 }}
+                      >
+                        <Close fontSize="small" />
+                      </IconButton>
+                    </Box>
+                  }
+                  value={tab.id}
+                  sx={{
+                    color: 'text.secondary',
+                    '&.Mui-selected': { color: 'primary.main' },
+                  }}
+                />
+              ))}
             </Tabs>
-            <IconButton onClick={toggleDarkMode} color="inherit">
+            <IconButton onClick={toggleDarkMode} color="primary.main">
               {darkMode ? <Brightness7 /> : <Brightness4 />}
             </IconButton>
           </Toolbar>
@@ -156,7 +232,7 @@ function App() {
                 <Tabs 
                   value={selectedTable} 
                   onChange={handleTableChange}
-                  TabIndicatorProps={{ sx: { backgroundColor: '#007bff' } }}
+                  TabIndicatorProps={{ sx: { backgroundColor: 'primary.main' } }}
                 >
                   {tables.map((table) => (
                     <Tab 
@@ -165,7 +241,7 @@ function App() {
                       value={table}
                       sx={{
                         color: 'text.secondary',
-                        '&.Mui-selected': { color: '#007bff' },
+                        '&.Mui-selected': { color: 'primary.main' },
                       }}
                     />
                   ))}
@@ -175,16 +251,16 @@ function App() {
                     label="Search"
                     variant="outlined"
                     size="small"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                    value={searchTerm || ""}
+                    onChange={(e) => updateTabState(0, { searchTerm: e.target.value })}
                     sx={{ minWidth: 200 }}
                   />
                   <FormControl size="small" sx={{ minWidth: 150 }}>
                     <InputLabel>Search Column</InputLabel>
                     <Select
-                      value={searchColumn}
+                      value={searchColumn || ""}
                       label="Search Column"
-                      onChange={(e) => setSearchColumn(e.target.value)}
+                      onChange={(e) => updateTabState(0, { searchColumn: e.target.value })}
                     >
                       {columns.map((column) => (
                         <MenuItem key={column} value={column}>
@@ -194,7 +270,7 @@ function App() {
                     </Select>
                   </FormControl>
                   <IconButton onClick={toggleChat} color="primary">
-                    <Search />
+                    <Chat />
                   </IconButton>
                 </Box>
               </Paper>
@@ -211,12 +287,28 @@ function App() {
                     searchColumn={searchColumn}
                   />
                 </motion.div>
-                <ChatArea isOpen={chatOpen} onClose={() => setChatOpen(false)} />
+                <ChatArea 
+                  isOpen={chatOpen || false} 
+                  onClose={() => updateTabState(0, { chatOpen: false })} 
+                  currentTable={selectedTable} 
+                  onOpenNewTab={handleOpenNewTab}
+                />
               </Box>
             </>
           )}
 
-          {selectedTab === 1 && <FileUpload />}
+          {selectedTab === 1 && (
+            <FileUpload 
+              persistentState={tabStates[1] || {}}
+              onStateChange={(updates) => updateTabState(1, updates)}
+            />
+          )}
+          
+          {dynamicTabs.map((tab) => (
+            selectedTab === tab.id && (
+              <QueryResultsTab key={tab.id} data={tab.data} table={tab.table} />
+            )
+          ))}
         </Container>
       </Box>
     </ThemeProvider>
