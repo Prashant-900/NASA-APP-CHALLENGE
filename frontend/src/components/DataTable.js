@@ -70,13 +70,40 @@ function DataTable({ tableName, searchTerm, searchColumn }) {
   }
 
   return (
-    <Paper>
-      <TableContainer sx={{ maxHeight: 600 }}>
-        <Table stickyHeader>
+    <Paper 
+      elevation={0}
+      sx={{
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        borderBottom: '1px solid',
+        borderColor: 'grey.300',
+        backgroundColor: 'background.paper',
+        overflow: 'hidden',
+      }}
+    >
+      <TableContainer 
+        sx={{ 
+          flex: 1, 
+          overflow: 'auto',
+          width: '100%',
+          maxHeight: 'calc(100vh - 200px)',
+        }}
+      >
+        <Table stickyHeader size="small" sx={{ minWidth: 'max-content' }}>
           <TableHead>
             <TableRow>
               {columns.map((column) => (
-                <TableCell key={column} sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>
+                <TableCell 
+                  key={column} 
+                  sx={{ 
+                    fontWeight: 'bold',
+                    fontSize: 16,
+                    backgroundColor: 'background.paper',
+                    whiteSpace: 'nowrap',
+                    minWidth: '120px',
+                  }}
+                >
                   {column}
                 </TableCell>
               ))}
@@ -86,7 +113,13 @@ function DataTable({ tableName, searchTerm, searchColumn }) {
             {data.map((row, index) => (
               <TableRow key={index} hover>
                 {columns.map((column) => (
-                  <TableCell key={column}>
+                  <TableCell 
+                    key={column}
+                    sx={{
+                      whiteSpace: 'nowrap',
+                      minWidth: '120px',
+                    }}
+                  >
                     {row[column] !== null && row[column] !== undefined 
                       ? String(row[column]) 
                       : 'N/A'

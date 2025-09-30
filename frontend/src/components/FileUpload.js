@@ -71,7 +71,15 @@ const FileUpload = () => {
   };
 
   return (
-    <Paper sx={{ p: 3 }}>
+    <Paper 
+      elevation={0}
+      sx={{ 
+        p: 3,
+        backgroundColor: 'background.default',
+        height: '100%',
+        overflow: 'auto',
+      }}
+    >
       <Typography variant="h5" gutterBottom>
         Exoplanet Prediction
       </Typography>
@@ -86,7 +94,15 @@ const FileUpload = () => {
             variant="outlined"
             component="label"
             startIcon={<CloudUpload />}
-            sx={{ minWidth: 200 }}
+            sx={{ 
+              minWidth: 200,
+              borderColor: '#007bff',
+              color: '#007bff',
+              '&:hover': {
+                borderColor: '#0056b3',
+                backgroundColor: 'rgba(0, 123, 255, 0.04)',
+              }
+            }}
           >
             Choose File
             <input
@@ -121,7 +137,13 @@ const FileUpload = () => {
           variant="contained"
           onClick={handleUpload}
           disabled={!file || loading}
-          sx={{ mr: 2 }}
+          sx={{ 
+            mr: 2,
+            backgroundColor: '#007bff',
+            '&:hover': {
+              backgroundColor: '#0056b3',
+            }
+          }}
         >
           {loading ? <CircularProgress size={20} /> : 'Predict'}
         </Button>
@@ -131,6 +153,14 @@ const FileUpload = () => {
             variant="outlined"
             startIcon={<Download />}
             onClick={downloadResults}
+            sx={{
+              borderColor: '#007bff',
+              color: '#007bff',
+              '&:hover': {
+                borderColor: '#0056b3',
+                backgroundColor: 'rgba(0, 123, 255, 0.04)',
+              }
+            }}
           >
             Download CSV with Predictions
           </Button>
