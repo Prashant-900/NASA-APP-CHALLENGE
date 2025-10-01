@@ -1,6 +1,11 @@
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from typing import List, Dict, Any, Optional
+import pandas as pd
+import subprocess
+import json
+import tempfile
+import os
 from .config import Config
 
 class DatabaseManager:

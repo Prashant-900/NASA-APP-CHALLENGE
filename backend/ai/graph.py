@@ -7,56 +7,29 @@ class RAGGraph:
         self.db = DatabaseManager()
         self.llm = GeminiLLM()
     
-    def _parse_request(self, message: str, table: str) -> Dict[str, Any]:
-        state = {
-            "message": message,
-            "table": table or "",
-            "columns": None,
-            "query_result": None,
-            "response": "",
-            "error": None
-        }
-        
-        message_lower = message.lower()
-        
-        # Extract table name if not provided
-        if not state["table"]:
-            for tbl in self.db.config.AVAILABLE_TABLES:
-                if tbl in message_lower:
-                    state["table"] = tbl
-                    break
-        
-        # Extract column mentions
-        if state["table"]:
-            try:
-                available_columns = self.db.get_table_columns(state["table"])
-                mentioned_columns = []
-                for col in available_columns:
-                    if col.lower() in message_lower:
-                        mentioned_columns.append(col)
-                if mentioned_columns:
-                    state["columns"] = mentioned_columns
-            except Exception as e:
-                print(f"Error getting table columns: {str(e)}")
-        
-        return state
-    
     def process_message(self, message: str, table: str = None) -> Dict[str, Any]:
+        """Process user message with enhanced LLM tool integration"""
         try:
             if not table:
                 return {
                     "response": "Please specify which table to query using the dropdown above.",
                     "data": None,
+                    "plot": None,
+                    "response_type": "ai_only",
+                    "show_in_query_tab": False,
                     "error": None
                 }
             
-            # Let LLM handle the entire process with tools
+            # Use the enhanced LLM with tools
             return self.llm.process_with_tools(message, table, self.db)
                 
         except Exception as e:
             return {
                 "response": f"Error: {str(e)}",
                 "data": None,
+                "plot": None,
+                "response_type": "ai_only",
+                "show_in_query_tab": False,
                 "error": str(e)
             }
     
@@ -70,12 +43,6 @@ class RAGGraph:
                 }
             
             # Get all data from the table (limited for performance)
-            if table not in self.db.config.AVAILABLE_TABLES:
-                return {
-                    "error": f"Table {table} not available",
-                    "data": None
-                }
-            
             query = f"SELECT * FROM \"{table}\" LIMIT 1000"
             result = self.db.execute_custom_query(query)
             
@@ -90,4 +57,3 @@ class RAGGraph:
                 "error": str(e),
                 "data": None
             }
-    

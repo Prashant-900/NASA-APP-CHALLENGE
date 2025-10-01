@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import {
   Paper, Typography, Button, Box, Select, MenuItem, FormControl, InputLabel,
   Alert, CircularProgress, Table, TableBody, TableCell, TableContainer,
-  TableHead, TableRow, Chip
+  TableHead, TableRow, Chip, TextField, Grid, Divider
 } from '@mui/material';
-import { CloudUpload, Download } from '@mui/icons-material';
+import { CloudUpload, Download, Calculate } from '@mui/icons-material';
 import { dataApi } from '../api';
 import { TABLE_NAMES, TABLE_LABELS } from '../constants';
 
@@ -14,7 +14,19 @@ const FileUpload = ({ persistentState = {}, onStateChange }) => {
     modelType = TABLE_NAMES.K2,
     loading = false,
     results = null,
-    error = ''
+    error = '',
+    manualFeatures = {
+      pl_orbper: '',
+      pl_rade: '',
+      st_teff: '',
+      st_rad: '',
+      st_mass: '',
+      st_logg: '',
+      sy_dist: '',
+      sy_vmag: '',
+      sy_kmag: '',
+      sy_gaiamag: ''
+    }
   } = persistentState;
   
   const updateState = (updates) => {
@@ -54,6 +66,40 @@ const FileUpload = ({ persistentState = {}, onStateChange }) => {
     } finally {
       updateState({ loading: false });
     }
+  };
+
+  const handleManualPredict = async () => {
+    const requiredFields = ['pl_orbper', 'pl_rade', 'st_teff', 'st_rad', 'st_mass', 'st_logg', 'sy_dist', 'sy_vmag', 'sy_kmag', 'sy_gaiamag'];
+    const emptyFields = requiredFields.filter(field => !manualFeatures[field] || manualFeatures[field].toString().trim() === '');
+    
+    if (emptyFields.length > 0) {
+      updateState({ error: `Please fill all required fields: ${emptyFields.join(', ')}` });
+      return;
+    }
+
+    updateState({ loading: true, error: '' });
+
+    try {
+      const response = await dataApi.predictManual({
+        features: manualFeatures,
+        type: modelType
+      });
+
+      updateState({ results: response.data });
+    } catch (err) {
+      updateState({ error: err.message });
+    } finally {
+      updateState({ loading: false });
+    }
+  };
+
+  const handleFeatureChange = (field, value) => {
+    updateState({
+      manualFeatures: {
+        ...manualFeatures,
+        [field]: value
+      }
+    });
   };
 
   const downloadResults = () => {
@@ -164,6 +210,145 @@ const FileUpload = ({ persistentState = {}, onStateChange }) => {
         )}
       </Box>
 
+      <Divider sx={{ my: 3 }} />
+
+      <Box sx={{ mb: 3 }}>
+        <Typography variant="h6" gutterBottom>
+          Manual Feature Input
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Enter the required feature values manually for single prediction
+        </Typography>
+        
+        <Grid container spacing={2} sx={{ mb: 2 }}>
+          <Grid item xs={12} sm={6} md={4}>
+            <TextField
+              fullWidth
+              label="Orbital Period (pl_orbper)"
+              type="number"
+              value={manualFeatures.pl_orbper}
+              onChange={(e) => handleFeatureChange('pl_orbper', e.target.value)}
+              size="small"
+              required
+            />
+          </Grid>
+          <Grid item xs={12} sm={6} md={4}>
+            <TextField
+              fullWidth
+              label="Planet Radius (pl_rade)"
+              type="number"
+              value={manualFeatures.pl_rade}
+              onChange={(e) => handleFeatureChange('pl_rade', e.target.value)}
+              size="small"
+              required
+            />
+          </Grid>
+          <Grid item xs={12} sm={6} md={4}>
+            <TextField
+              fullWidth
+              label="Stellar Temperature (st_teff)"
+              type="number"
+              value={manualFeatures.st_teff}
+              onChange={(e) => handleFeatureChange('st_teff', e.target.value)}
+              size="small"
+              required
+            />
+          </Grid>
+          <Grid item xs={12} sm={6} md={4}>
+            <TextField
+              fullWidth
+              label="Stellar Radius (st_rad)"
+              type="number"
+              value={manualFeatures.st_rad}
+              onChange={(e) => handleFeatureChange('st_rad', e.target.value)}
+              size="small"
+              required
+            />
+          </Grid>
+          <Grid item xs={12} sm={6} md={4}>
+            <TextField
+              fullWidth
+              label="Stellar Mass (st_mass)"
+              type="number"
+              value={manualFeatures.st_mass}
+              onChange={(e) => handleFeatureChange('st_mass', e.target.value)}
+              size="small"
+              required
+            />
+          </Grid>
+          <Grid item xs={12} sm={6} md={4}>
+            <TextField
+              fullWidth
+              label="Stellar Log g (st_logg)"
+              type="number"
+              value={manualFeatures.st_logg}
+              onChange={(e) => handleFeatureChange('st_logg', e.target.value)}
+              size="small"
+              required
+            />
+          </Grid>
+          <Grid item xs={12} sm={6} md={4}>
+            <TextField
+              fullWidth
+              label="System Distance (sy_dist)"
+              type="number"
+              value={manualFeatures.sy_dist}
+              onChange={(e) => handleFeatureChange('sy_dist', e.target.value)}
+              size="small"
+              required
+            />
+          </Grid>
+          <Grid item xs={12} sm={6} md={4}>
+            <TextField
+              fullWidth
+              label="V Magnitude (sy_vmag)"
+              type="number"
+              value={manualFeatures.sy_vmag}
+              onChange={(e) => handleFeatureChange('sy_vmag', e.target.value)}
+              size="small"
+              required
+            />
+          </Grid>
+          <Grid item xs={12} sm={6} md={4}>
+            <TextField
+              fullWidth
+              label="K Magnitude (sy_kmag)"
+              type="number"
+              value={manualFeatures.sy_kmag}
+              onChange={(e) => handleFeatureChange('sy_kmag', e.target.value)}
+              size="small"
+              required
+            />
+          </Grid>
+          <Grid item xs={12} sm={6} md={4}>
+            <TextField
+              fullWidth
+              label="Gaia Magnitude (sy_gaiamag)"
+              type="number"
+              value={manualFeatures.sy_gaiamag}
+              onChange={(e) => handleFeatureChange('sy_gaiamag', e.target.value)}
+              size="small"
+              required
+            />
+          </Grid>
+        </Grid>
+
+        <Button
+          variant="contained"
+          onClick={handleManualPredict}
+          disabled={loading}
+          startIcon={loading ? <CircularProgress size={20} /> : <Calculate />}
+          sx={{ 
+            backgroundColor: 'primary.main',
+            '&:hover': {
+              backgroundColor: 'primary.dark',
+            }
+          }}
+        >
+          {loading ? 'Predicting...' : 'Predict'}
+        </Button>
+      </Box>
+
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
@@ -180,7 +365,7 @@ const FileUpload = ({ persistentState = {}, onStateChange }) => {
             <Chip label={`Model: ${results.model_type.toUpperCase()}`} sx={{ mr: 1 }} />
             <Chip label={`Rows: ${results.rows_processed}`} sx={{ mr: 1 }} />
             <Chip 
-              label={`Exoplanets: ${results.predictions.filter(p => p).length}`} 
+              label={`Exoplanets: ${Array.isArray(results.predictions) ? results.predictions.filter(p => p).length : (results.predictions ? 1 : 0)}`} 
               color="success" 
             />
           </Box>
@@ -195,24 +380,38 @@ const FileUpload = ({ persistentState = {}, onStateChange }) => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {results.predictions.slice(0, 100).map((prediction, index) => (
-                  <TableRow key={index}>
-                    <TableCell>{index + 1}</TableCell>
-                    <TableCell>{prediction ? 'Exoplanet' : 'Not Exoplanet'}</TableCell>
+                {Array.isArray(results.predictions) ? (
+                  results.predictions.slice(0, 100).map((prediction, index) => (
+                    <TableRow key={index}>
+                      <TableCell>{index + 1}</TableCell>
+                      <TableCell>{prediction ? 'Exoplanet' : 'Not Exoplanet'}</TableCell>
+                      <TableCell>
+                        <Chip 
+                          label={prediction ? 'Positive' : 'Negative'}
+                          color={prediction ? 'success' : 'default'}
+                          size="small"
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell>1</TableCell>
+                    <TableCell>{results.predictions ? 'Exoplanet' : 'Not Exoplanet'}</TableCell>
                     <TableCell>
                       <Chip 
-                        label={prediction ? 'Positive' : 'Negative'}
-                        color={prediction ? 'success' : 'default'}
+                        label={results.predictions ? 'Positive' : 'Negative'}
+                        color={results.predictions ? 'success' : 'default'}
                         size="small"
                       />
                     </TableCell>
                   </TableRow>
-                ))}
+                )}
               </TableBody>
             </Table>
           </TableContainer>
           
-          {results.predictions.length > 100 && (
+          {Array.isArray(results.predictions) && results.predictions.length > 100 && (
             <Typography variant="caption" sx={{ mt: 1, display: 'block' }}>
               Showing first 100 results. Download CSV for complete results.
             </Typography>

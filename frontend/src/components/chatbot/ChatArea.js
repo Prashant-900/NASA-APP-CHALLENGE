@@ -50,6 +50,7 @@ const ChatArea = forwardRef(({ isOpen, onClose, currentTable, onOpenNewTab, scro
           const queryId = addQueryResponse({
             response: fullResponse,
             data: chunk.data,
+            plot: chunk.plot,
             table: selectedTable,
             messageId: botMessageId
           });

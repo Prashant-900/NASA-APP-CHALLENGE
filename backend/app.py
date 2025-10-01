@@ -190,6 +190,63 @@ def predict_data():
             os.remove(filepath)
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/predict/manual', methods=['POST'])
+def predict_manual():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+        
+        features = data.get('features', {})
+        model_type = data.get('type', 'k2')
+        
+        # Required features for all models
+        required_features = ['pl_orbper', 'pl_rade', 'st_teff', 'st_rad', 'st_mass', 'st_logg', 'sy_dist', 'sy_vmag', 'sy_kmag', 'sy_gaiamag']
+        
+        # Validate required features
+        missing_features = [f for f in required_features if f not in features or not features[f]]
+        if missing_features:
+            return jsonify({'error': f'Missing required features: {missing_features}'}), 400
+        
+        # Convert to DataFrame
+        feature_data = {}
+        for feature in required_features:
+            try:
+                feature_data[feature] = [float(features[feature])]
+            except (ValueError, TypeError):
+                return jsonify({'error': f'Invalid value for {feature}: must be a number'}), 400
+        
+        df = pd.DataFrame(feature_data)
+        
+        # Predict based on model type
+        if model_type == 'k2':
+            prediction = k2_predict(df)
+        elif model_type == 'toi':
+            prediction = toi_predict(df)
+        elif model_type == 'cum':
+            prediction = cum_predict(df)
+        else:
+            return jsonify({'error': f'Model type "{model_type}" not supported'}), 400
+        
+        # Handle prediction result
+        if isinstance(prediction, str):  # Error message
+            return jsonify({'error': prediction}), 400
+        
+        # Convert to boolean if it's a numpy array
+        if hasattr(prediction, 'tolist'):
+            prediction = prediction.tolist()[0] if len(prediction) > 0 else False
+        elif hasattr(prediction, '__iter__') and not isinstance(prediction, str):
+            prediction = list(prediction)[0] if len(list(prediction)) > 0 else False
+        
+        return jsonify({
+            'predictions': bool(prediction),
+            'model_type': model_type,
+            'rows_processed': 1
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/download/<filename>', methods=['GET'])
 def download_file(filename):
     try:
@@ -298,6 +355,15 @@ def chat_stream():
         
         def generate():
             try:
+                if not rag_system:
+                    error_chunk = {
+                        'chunk': 'RAG system not initialized',
+                        'done': True,
+                        'error': 'System initialization failed'
+                    }
+                    yield f"data: {json.dumps(error_chunk)}\n\n"
+                    return
+                    
                 result = rag_system.process_message(message, table)
                 
                 # Determine if should open new tab based on LLM decision
@@ -308,6 +374,7 @@ def chat_stream():
                     print(f"Caching query {query_id} with {len(result['data'])} records")
                     query_cache.set(query_id, {
                         'data': result['data'],
+                        'plot': result.get('plot'),
                         'table': table,
                         'message': message
                     })
@@ -319,12 +386,16 @@ def chat_stream():
                         'chunk': word + (' ' if i < len(words) - 1 else ''),
                         'done': i == len(words) - 1,
                         'data': result.get('data')[:10] if result.get('data') and i == len(words) - 1 else None,
+                        'plot': result.get('plot') if i == len(words) - 1 else None,
                         'open_new_tab': should_open_tab if i == len(words) - 1 else False,
                         'response_type': result.get('response_type', 'ai_only') if i == len(words) - 1 else None
                     }
                     yield f"data: {json.dumps(chunk)}\n\n"
                     
             except Exception as e:
+                print(f"Chat stream error: {str(e)}")
+                import traceback
+                traceback.print_exc()
                 error_chunk = {
                     'chunk': f"Error: {str(e)}",
                     'done': True,

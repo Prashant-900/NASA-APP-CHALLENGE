@@ -51,3 +51,13 @@ export const predict = async (formData) => {
     throw error;
   }
 };
+
+export const predictManual = async (data) => {
+  try {
+    const response = await apiClient.post('/predict/manual', data);
+    return response;
+  } catch (error) {
+    console.error('Error making manual prediction:', error);
+    throw error;
+  }
+};

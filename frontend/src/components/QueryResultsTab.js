@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import {
   Paper, Typography, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Box, Chip, IconButton, Divider
@@ -8,6 +8,8 @@ import { useQueryResponses } from '../hooks';
 import { dataApi } from '../api';
 import { safeArrayAccess, sanitizeText } from '../utils';
 import MarkdownRenderer from './common/MarkdownRenderer';
+
+const Plot = lazy(() => import('react-plotly.js'));
 
 function QueryResultsTab({ scrollToMessage }) {
   const responses = useQueryResponses();
@@ -129,8 +131,31 @@ function QueryResultsTab({ scrollToMessage }) {
               />
             </Box>
             
-            {response.data && (
+            {(response.data || response.plot) && (
               <Box sx={{ p: 2, borderTop: '1px solid', borderColor: 'grey.300' }}>
+                
+                {response.plot && Object.keys(response.plot).length > 0 && (
+                  <Box sx={{ mb: 3 }}>
+                    <Typography variant="subtitle2" sx={{ mb: 2 }}>Visualization</Typography>
+                    <Box sx={{ border: '1px solid', borderColor: 'grey.300', borderRadius: 1, overflow: 'hidden' }}>
+                      <Suspense fallback={<Box sx={{ height: '400px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Loading plot...</Box>}>
+                        <Plot
+                          data={response.plot.data || []}
+                          layout={{
+                            ...response.plot.layout,
+                            autosize: true,
+                            margin: { l: 50, r: 50, t: 50, b: 50 }
+                          }}
+                          config={{ displayModeBar: false, responsive: true }}
+                          style={{ width: '100%', height: '400px' }}
+                        />
+                      </Suspense>
+                    </Box>
+                  </Box>
+                )}
+                
+                {response.data && (
+                  <Box>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                   <Typography variant="subtitle2">Data Results</Typography>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -192,6 +217,8 @@ function QueryResultsTab({ scrollToMessage }) {
                     </TableBody>
                   </Table>
                 </TableContainer>
+                  </Box>
+                )}
               </Box>
             )}
             

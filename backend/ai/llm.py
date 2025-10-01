@@ -1,37 +1,170 @@
 import google.generativeai as genai
 from typing import Dict, Any, List
 from .config import Config
+from .plot_tools import execute_plot_code, execute_query_dataframe
 import json
+import subprocess
+import tempfile
+import os
+import pandas as pd
 
 class GeminiLLM:
     def __init__(self):
         self.config = Config()
         genai.configure(api_key=self.config.GEMINI_API_KEY)
         self.model = genai.GenerativeModel('gemini-2.0-flash-exp')
+        self.tools = {
+            'execute_sql': self._execute_sql_tool,
+            'execute_python': self._execute_python_tool,
+            'web_search': self._web_search_tool,
+            'plot_graph': self._plot_graph_tool
+        }
     
-    def process_with_tools(self, user_message: str, table: str, db) -> dict:
-        """Process user message using tools for multi-step reasoning"""
+    def _execute_sql_tool(self, query: str, db) -> Dict[str, Any]:
+        """Execute SQL query and return results"""
         try:
-            # Analyze user intent first
-            intent = self.analyze_user_intent(user_message)
+            data = db.execute_custom_query(query)
+            return {"success": True, "data": data, "count": len(data)}
+        except Exception as e:
+            return {"success": False, "error": str(e), "data": []}
+    
+    def _execute_python_tool(self, code: str) -> Dict[str, Any]:
+        """Execute Python code in subprocess"""
+        try:
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+                f.write(code)
+                temp_file = f.name
             
-            # Get available tools
-            available_tools = self.get_available_tools()
+            result = subprocess.run(
+                ['python', temp_file],
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
             
-            # Plan tool usage based on intent
-            tool_plan = self.plan_tool_usage(user_message, intent, available_tools, table)
-            
-            # Execute tools in sequence
-            execution_results = self.execute_tool_chain(tool_plan, user_message, table, db)
-            
-            # Determine response type
-            response_type = self.determine_response_type(intent, execution_results)
+            os.unlink(temp_file)
             
             return {
-                "response": execution_results.get('final_response', ''),
-                "data": execution_results.get('data') if intent.get('send_data_directly', False) else None,
+                "success": result.returncode == 0,
+                "output": result.stdout,
+                "error": result.stderr if result.returncode != 0 else None
+            }
+        except Exception as e:
+            return {"success": False, "error": str(e), "output": ""}
+    
+    def _web_search_tool(self, query: str) -> Dict[str, Any]:
+        """Placeholder for web search - not implemented for security"""
+        return {
+            "success": False,
+            "error": "Web search not available in this environment",
+            "results": []
+        }
+    
+    def _plot_graph_tool(self, plot_code: str, data: List[Dict]) -> Dict[str, Any]:
+        """Generate plot from data"""
+        try:
+            df = pd.DataFrame(data)
+            plot_json = execute_plot_code(plot_code, df)
+            return {
+                "success": True,
+                "plot": plot_json,
+                "error": None
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "plot": {},
+                "error": str(e)
+            }
+    
+    def process_with_tools(self, user_message: str, table: str, db) -> dict:
+        """Process user message using LLM with tools"""
+        try:
+            # Get table columns
+            columns = db.get_table_columns(table) if table else []
+            
+            # Create system prompt with available tools
+            system_prompt = f"""You are an AI assistant with access to these tools:
+1. execute_sql(query) - Execute SQL queries on database
+2. execute_python(code) - Execute Python code
+3. plot_graph(plot_code, data) - Create plots using plotly
+
+Available table: {table}
+Available columns: {', '.join(columns)}
+
+User request: {user_message}
+
+Process this request step by step:
+1. If user wants to plot/visualize data, first execute SQL to get data, then create plot
+2. If user wants to see data, execute SQL query
+3. Always provide AI response explaining what you did
+
+Respond in JSON format:
+{{
+    "steps": [
+        {{"action": "execute_sql", "query": "SELECT ...", "reasoning": "why"}},
+        {{"action": "plot_graph", "code": "fig = px.histogram(...)", "reasoning": "why"}}
+    ],
+    "response": "AI explanation of results"
+}}"""
+
+            # Get LLM response
+            response = self.model.generate_content(system_prompt)
+            response_text = response.text.strip()
+            
+            # Try to parse JSON response
+            try:
+                if response_text.startswith('```json'):
+                    response_text = response_text.replace('```json', '').replace('```', '').strip()
+                
+                plan = json.loads(response_text)
+            except:
+                # Fallback if JSON parsing fails
+                return self._fallback_processing(user_message, table, db, columns)
+            
+            # Execute planned steps
+            results = {"data": None, "plot": None, "ai_response": ""}
+            
+            for step in plan.get("steps", []):
+                action = step.get("action")
+                
+                if action == "execute_sql":
+                    query = step.get("query", "")
+                    sql_result = self._execute_sql_tool(query, db)
+                    if sql_result["success"]:
+                        results["data"] = sql_result["data"]
+                
+                elif action == "plot_graph":
+                    if results["data"]:
+                        plot_code = step.get("code", "")
+                        plot_result = self._plot_graph_tool(plot_code, results["data"])
+                        if plot_result["success"]:
+                            results["plot"] = plot_result["plot"]
+                
+                elif action == "execute_python":
+                    code = step.get("code", "")
+                    self._execute_python_tool(code)
+            
+            # Determine response type
+            if results["plot"]:
+                response_type = "query_with_data"
+                show_in_tab = True
+                data_to_send = None  # Don't send data table for plots
+            elif results["data"]:
+                response_type = "query_with_data"
+                show_in_tab = True
+                data_to_send = results["data"]
+            else:
+                response_type = "ai_only"
+                show_in_tab = False
+                data_to_send = None
+            
+            return {
+                "response": plan.get("response", "Request processed successfully."),
+                "data": data_to_send,
+                "plot": results["plot"],
                 "response_type": response_type,
-                "show_in_query_tab": response_type == 'query_with_data',
+                "show_in_query_tab": show_in_tab,
                 "error": None
             }
             
@@ -39,176 +172,108 @@ class GeminiLLM:
             return {
                 "response": f"Error processing request: {str(e)}",
                 "data": None,
+                "plot": None,
                 "response_type": "ai_only",
                 "show_in_query_tab": False,
                 "error": str(e)
             }
     
-    def analyze_user_intent(self, user_message: str) -> Dict[str, Any]:
-        """Analyze user intent to determine response strategy"""
-        prompt = f"""Analyze this user request:
-        
-User: {user_message}
-        
-Determine:
-1. needs_query: true/false - Does this need database query?
-2. send_data_directly: true/false - Should raw query data be sent to user interface?
-3. response_type: "ai_only" or "query_with_data"
-
-Logic:
-- If user asks for specific data, records, lists, tables → send_data_directly: true, response_type: "query_with_data"
-- If user asks for explanations, analysis, insights, summaries → send_data_directly: false, response_type: "ai_only"
-- If user asks general questions → needs_query: false, response_type: "ai_only"
-        
-Return JSON: {{"needs_query": true/false, "send_data_directly": true/false, "response_type": "..."}}"""
-        
+    def _fallback_processing(self, user_message: str, table: str, db, columns: List[str]) -> dict:
+        """Fallback processing when JSON parsing fails"""
         try:
-            response = self.model.generate_content(prompt)
-            return json.loads(response.text.strip().replace('```json', '').replace('```', ''))
-        except (json.JSONDecodeError, Exception) as e:
-            print(f"Error analyzing user intent: {str(e)}")
-            return {"needs_query": True, "send_data_directly": False, "response_type": "ai_only"}
-    
-    def get_available_tools(self) -> List[str]:
-        """Get list of available tools"""
-        return [
-            "get_columns",
-            "generate_sql", 
-            "execute_query",
-            "analyze_data",
-            "generate_response"
-        ]
-    
-    def plan_tool_usage(self, user_message: str, intent: Dict, tools: List[str], table: str) -> List[Dict]:
-        """Plan which tools to use based on intent"""
-        plan = []
-        
-        if intent.get('needs_query', True):
-            plan.extend([
-                {"tool": "get_columns", "params": {"table": table}},
-                {"tool": "generate_sql", "params": {"message": user_message, "table": table}},
-                {"tool": "execute_query", "params": {}}
-            ])
-        
-        plan.append({"tool": "generate_response", "params": {"message": user_message, "intent": intent}})
-        
-        return plan
-    
-    def execute_tool_chain(self, tool_plan: List[Dict], user_message: str, table: str, db) -> Dict:
-        """Execute tools in planned sequence"""
-        results = {"steps": []}
-        columns = None
-        sql_query = None
-        data = None
-        
-        for step in tool_plan:
-            tool = step["tool"]
-            params = step["params"]
+            # Simple pattern matching
+            message_lower = user_message.lower()
             
-            if tool == "get_columns":
-                try:
-                    columns = db.get_table_columns(table)
-                    results["columns"] = columns
-                    results["steps"].append({"tool": tool, "result": f"Retrieved {len(columns)} columns"})
-                except Exception as e:
-                    print(f"Error getting columns: {str(e)}")
-                    results["columns"] = []
-                    results["steps"].append({"tool": tool, "result": f"Failed to get columns: {str(e)}"})
+            if any(word in message_lower for word in ['plot', 'hist', 'graph', 'chart']):
+                # Generate SQL query
+                sql_query = self._generate_simple_sql(user_message, table, columns)
+                sql_result = self._execute_sql_tool(sql_query, db)
+                
+                if sql_result["success"] and sql_result["data"]:
+                    # Generate plot code
+                    plot_code = self._generate_simple_plot_code(user_message, columns)
+                    plot_result = self._plot_graph_tool(plot_code, sql_result["data"])
+                    
+                    return {
+                        "response": f"Generated plot for {user_message}",
+                        "data": None,
+                        "plot": plot_result["plot"] if plot_result["success"] else None,
+                        "response_type": "query_with_data",
+                        "show_in_query_tab": True,
+                        "error": None
+                    }
             
-            elif tool == "generate_sql":
-                sql_query = self.generate_sql_query(user_message, table, columns or [])
-                results["sql_query"] = sql_query
-                results["steps"].append({"tool": tool, "result": "SQL query generated"})
+            elif any(word in message_lower for word in ['show', 'display', 'list', 'top']):
+                # Generate SQL query for data display
+                sql_query = self._generate_simple_sql(user_message, table, columns)
+                sql_result = self._execute_sql_tool(sql_query, db)
+                
+                return {
+                    "response": f"Retrieved {len(sql_result['data'])} records from {table}",
+                    "data": sql_result["data"] if sql_result["success"] else None,
+                    "plot": None,
+                    "response_type": "query_with_data",
+                    "show_in_query_tab": True,
+                    "error": None
+                }
             
-            elif tool == "execute_query":
-                if sql_query:
+            return {
+                "response": "I can help you query data or create plots. Try asking to 'show data' or 'plot histogram'.",
+                "data": None,
+                "plot": None,
+                "response_type": "ai_only",
+                "show_in_query_tab": False,
+                "error": None
+            }
+            
+        except Exception as e:
+            return {
+                "response": f"Error in fallback processing: {str(e)}",
+                "data": None,
+                "plot": None,
+                "response_type": "ai_only",
+                "show_in_query_tab": False,
+                "error": str(e)
+            }
+    
+    def _generate_simple_sql(self, user_message: str, table: str, columns: List[str]) -> str:
+        """Generate simple SQL query based on user message"""
+        message_lower = user_message.lower()
+        
+        # Extract limit if mentioned
+        limit = 100
+        if 'top' in message_lower:
+            words = message_lower.split()
+            for i, word in enumerate(words):
+                if word == 'top' and i + 1 < len(words):
                     try:
-                        print(f"Executing SQL: {sql_query}")
-                        data = db.execute_custom_query(sql_query)
-                        print(f"Query returned {len(data) if data else 0} records")
-                        results["data"] = data
-                        results["steps"].append({"tool": tool, "result": f"Retrieved {len(data) if data else 0} records"})
-                    except Exception as e:
-                        print(f"Query execution error: {str(e)}")
-                        results["data"] = []
-                        results["steps"].append({"tool": tool, "result": f"Query failed: {str(e)}"})
-            
-
-            
-            elif tool == "generate_response":
-                response = self.generate_response(user_message, data, table, params.get('intent', {}))
-                results["final_response"] = response
-                results["steps"].append({"tool": tool, "result": "Response generated"})
+                        limit = min(int(words[i + 1]), 1000)
+                    except:
+                        pass
         
-        return results
+        # Extract column if mentioned
+        mentioned_cols = [col for col in columns if col.lower() in message_lower]
+        
+        if mentioned_cols:
+            return f"SELECT {', '.join(mentioned_cols)} FROM {table} LIMIT {limit}"
+        else:
+            return f"SELECT * FROM {table} LIMIT {limit}"
     
-    def determine_response_type(self, intent: Dict, results: Dict) -> str:
-        """Determine response type based on intent"""
-        return intent.get('response_type', 'ai_only')
-    
-    def generate_sql_query(self, user_message: str, table: str, columns: list) -> str:
-        prompt = f"""Generate SQL query for exoplanet research.
+    def _generate_simple_plot_code(self, user_message: str, columns: List[str]) -> str:
+        """Generate simple plot code"""
+        message_lower = user_message.lower()
         
-User request: {user_message}
-Table: {table}
-Columns: {', '.join(columns) if columns else 'unknown'}
+        # Find column mentioned in message
+        col_name = None
+        for col in columns:
+            if col.lower() in message_lower:
+                col_name = col
+                break
         
-For exoplanet detection, prioritize: period, depth, duration, radius, mass, temperature.
-Limit results appropriately based on request.
+        if not col_name and columns:
+            col_name = columns[0]  # Use first column as fallback
         
-Return only SQL:"""
-        
-        try:
-            response = self.model.generate_content(prompt)
-            return response.text.strip().replace('```sql', '').replace('```', '').strip()
-        except Exception as e:
-            return f"SELECT * FROM {table} LIMIT 10"
-    
-    def analyze_query_results(self, user_message: str, data: list, table: str) -> str:
-        """Analyze query results for insights"""
-        try:
-            prompt = f"""Analyze this exoplanet data and provide insights.
-            
-User question: {user_message}
-Table: {table}
-Records: {len(data)}
-Sample: {data[:3] if data else 'No data'}
-            
-Provide scientific insights about the data patterns, trends, or notable findings.
-            
-Analysis:"""
-            
-            response = self.model.generate_content(prompt)
-            return response.text
-        except Exception as e:
-            return f"Analysis error: {str(e)}"
-    
-    def generate_response(self, user_message: str, query_result: list, table: str, intent: Dict = None) -> str:
-        try:
-            # Sanitize inputs to prevent XSS
-            import html
-            user_message = html.escape(str(user_message)[:500])  # Limit length and escape
-            table = html.escape(str(table))
-            
-            if intent and intent.get('send_data_directly', False):
-                prompt = f"""User asked: {user_message}
-Found {len(query_result) if query_result else 0} records from {table}.
-
-Provide a brief explanation that the data is shown in the Query Results tab.
-
-Response:"""
-            else:
-                # Limit sample data to prevent large prompts
-                sample_data = str(query_result[:3] if query_result else 'No data')[:1000]
-                prompt = f"""User asked: {user_message}
-Data from {table}: {len(query_result) if query_result else 0} records
-Sample: {sample_data}
-
-Analyze and explain the findings. Provide insights based on the data.
-
-Response:"""
-            
-            response = self.model.generate_content(prompt)
-            return response.text
-        except Exception as e:
-            return f"Error generating response: {str(e)}"
+        if 'hist' in message_lower:
+            return f"fig = px.histogram(df.dropna(subset=['{col_name}']), x='{col_name}', title='Histogram of {col_name}')"
+        else:
+            return f"fig = px.histogram(df.dropna(subset=['{col_name}']), x='{col_name}', title='Data Visualization')"
