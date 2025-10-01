@@ -36,8 +36,8 @@ class RAGGraph:
                         mentioned_columns.append(col)
                 if mentioned_columns:
                     state["columns"] = mentioned_columns
-            except:
-                pass
+            except Exception as e:
+                print(f"Error getting table columns: {str(e)}")
         
         return state
     
@@ -70,7 +70,13 @@ class RAGGraph:
                 }
             
             # Get all data from the table (limited for performance)
-            query = f"SELECT * FROM {table} LIMIT 1000"
+            if table not in self.db.config.AVAILABLE_TABLES:
+                return {
+                    "error": f"Table {table} not available",
+                    "data": None
+                }
+            
+            query = f"SELECT * FROM \"{table}\" LIMIT 1000"
             result = self.db.execute_custom_query(query)
             
             return {

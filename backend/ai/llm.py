@@ -65,7 +65,8 @@ Return JSON: {{"needs_query": true/false, "send_data_directly": true/false, "res
         try:
             response = self.model.generate_content(prompt)
             return json.loads(response.text.strip().replace('```json', '').replace('```', ''))
-        except:
+        except (json.JSONDecodeError, Exception) as e:
+            print(f"Error analyzing user intent: {str(e)}")
             return {"needs_query": True, "send_data_directly": False, "response_type": "ai_only"}
     
     def get_available_tools(self) -> List[str]:
@@ -105,9 +106,14 @@ Return JSON: {{"needs_query": true/false, "send_data_directly": true/false, "res
             params = step["params"]
             
             if tool == "get_columns":
-                columns = db.get_table_columns(table)
-                results["columns"] = columns
-                results["steps"].append({"tool": tool, "result": f"Retrieved {len(columns)} columns"})
+                try:
+                    columns = db.get_table_columns(table)
+                    results["columns"] = columns
+                    results["steps"].append({"tool": tool, "result": f"Retrieved {len(columns)} columns"})
+                except Exception as e:
+                    print(f"Error getting columns: {str(e)}")
+                    results["columns"] = []
+                    results["steps"].append({"tool": tool, "result": f"Failed to get columns: {str(e)}"})
             
             elif tool == "generate_sql":
                 sql_query = self.generate_sql_query(user_message, table, columns or [])
@@ -116,9 +122,16 @@ Return JSON: {{"needs_query": true/false, "send_data_directly": true/false, "res
             
             elif tool == "execute_query":
                 if sql_query:
-                    data = db.execute_custom_query(sql_query)
-                    results["data"] = data
-                    results["steps"].append({"tool": tool, "result": f"Retrieved {len(data) if data else 0} records"})
+                    try:
+                        print(f"Executing SQL: {sql_query}")
+                        data = db.execute_custom_query(sql_query)
+                        print(f"Query returned {len(data) if data else 0} records")
+                        results["data"] = data
+                        results["steps"].append({"tool": tool, "result": f"Retrieved {len(data) if data else 0} records"})
+                    except Exception as e:
+                        print(f"Query execution error: {str(e)}")
+                        results["data"] = []
+                        results["steps"].append({"tool": tool, "result": f"Query failed: {str(e)}"})
             
 
             
@@ -172,6 +185,11 @@ Analysis:"""
     
     def generate_response(self, user_message: str, query_result: list, table: str, intent: Dict = None) -> str:
         try:
+            # Sanitize inputs to prevent XSS
+            import html
+            user_message = html.escape(str(user_message)[:500])  # Limit length and escape
+            table = html.escape(str(table))
+            
             if intent and intent.get('send_data_directly', False):
                 prompt = f"""User asked: {user_message}
 Found {len(query_result) if query_result else 0} records from {table}.
@@ -180,9 +198,11 @@ Provide a brief explanation that the data is shown in the Query Results tab.
 
 Response:"""
             else:
+                # Limit sample data to prevent large prompts
+                sample_data = str(query_result[:3] if query_result else 'No data')[:1000]
                 prompt = f"""User asked: {user_message}
 Data from {table}: {len(query_result) if query_result else 0} records
-Sample: {query_result[:3] if query_result else 'No data'}
+Sample: {sample_data}
 
 Analyze and explain the findings. Provide insights based on the data.
 

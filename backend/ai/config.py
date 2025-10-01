@@ -2,8 +2,15 @@ import os
 from typing import Dict, Any
 
 class Config:
-    GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', 'AIzaSyA4j6lnXFRRJaxNrXx96zTFWrNOwr2vut4')
-    DATABASE_URL = os.getenv('DATABASE_URL', 'postgresql://postgres:prashantshree@localhost:5432/nasa')
+    def __init__(self):
+        self.GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
+        self.DATABASE_URL = os.getenv('DATABASE_URL')
+        
+        if not self.GEMINI_API_KEY:
+            raise ValueError("GEMINI_API_KEY environment variable is required")
+        if not self.DATABASE_URL:
+            # Fallback for development only
+            self.DATABASE_URL = 'postgresql://postgres:prashantshree@localhost:5432/nasa'
     
     AVAILABLE_TABLES = ['k2', 'toi', 'cum']
     

@@ -5,14 +5,14 @@ export const chatApi = {
   
   executeDirectQuery: (table) => apiClient.post('/query/direct', { table }),
   
-  sendMessageStream: async (message, table, onChunk) => {
+  sendMessageStream: async (message, table, queryId, onChunk) => {
     try {
       const response = await fetch('http://localhost:5000/api/chat/stream', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ message, table }),
+        body: JSON.stringify({ message, table, query_id: queryId }),
       });
       
       const reader = response.body.getReader();

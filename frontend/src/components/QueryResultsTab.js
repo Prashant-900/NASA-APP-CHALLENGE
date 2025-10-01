@@ -1,37 +1,86 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Paper, Typography, Table, TableBody, TableCell, TableContainer,
-  TableHead, TableRow, Box, Chip, TextField, FormControl, InputLabel, Select, MenuItem, Tabs, Tab
+  TableHead, TableRow, Box, Chip, IconButton, Divider
 } from '@mui/material';
-import ReactMarkdown from 'react-markdown';
+import { ArrowBack, ArrowForward } from '@mui/icons-material';
+import { useQueryResponses } from '../hooks';
+import { dataApi } from '../api';
+import { safeArrayAccess, sanitizeText } from '../utils';
+import MarkdownRenderer from './common/MarkdownRenderer';
 
-function QueryResultsTab({ responses }) {
-  const [selectedResponse, setSelectedResponse] = useState(0);
-  const [subTab, setSubTab] = useState(0);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [searchColumn, setSearchColumn] = useState('');
+function QueryResultsTab({ scrollToMessage }) {
+  const responses = useQueryResponses();
+  const [tableData, setTableData] = useState({});
+  const [currentPage, setCurrentPage] = useState({});
+  const [hasMoreData, setHasMoreData] = useState({});
+  const queryRefs = useRef({});
   
-  const currentResponse = responses?.[selectedResponse] || {};
-  const data = currentResponse?.data || [];
-  const columns = data.length > 0 ? Object.keys(data[0]) : [];
+  const loadTableData = useCallback(async (queryId, table, page) => {
+    try {
+      const response = await dataApi.getQueryData(queryId, page);
+      const data = response.data;
+      
+      setTableData(prev => ({
+        ...prev,
+        [queryId]: data
+      }));
+      setCurrentPage(prev => ({
+        ...prev,
+        [queryId]: page
+      }));
+      setHasMoreData(prev => ({
+        ...prev,
+        [queryId]: response.has_next
+      }));
+    } catch (error) {
+      console.error('Error loading table data:', error);
+      setTableData(prev => ({ ...prev, [queryId]: [] }));
+    }
+  }, []);
   
-  const filteredData = React.useMemo(() => {
-    if (!data || data.length === 0) return [];
-    return data.filter(row => {
-      if (!searchTerm || !searchColumn) return true;
-      const value = row[searchColumn];
-      return value && String(value).toLowerCase().includes(searchTerm.toLowerCase());
+  useEffect(() => {
+    responses.forEach(response => {
+      if (response.data && !tableData[response.queryId]) {
+        setTableData(prev => ({
+          ...prev,
+          [response.queryId]: response.data
+        }));
+        setCurrentPage(prev => ({
+          ...prev,
+          [response.queryId]: 0
+        }));
+        setHasMoreData(prev => ({
+          ...prev,
+          [response.queryId]: response.data && response.data.length === 10
+        }));
+      }
     });
-  }, [data, searchTerm, searchColumn]);
+  }, [responses]);
   
-  if (!responses || responses.length === 0) {
+  const scrollToQuery = (queryId) => {
+    queryRefs.current[queryId]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+  
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.scrollToQuery = scrollToQuery;
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        delete window.scrollToQuery;
+      }
+    };
+  }, [scrollToQuery]);
+  
+  if (responses.length === 0) {
     return (
       <Paper elevation={0} sx={{ p: 3, backgroundColor: 'background.default', height: '100%' }}>
         <Typography variant="h6" gutterBottom>
-          AI Query Responses
+          Query Responses
         </Typography>
         <Typography color="text.secondary">
-          No responses yet. Ask questions in the chat to see results here.
+          No query responses yet. Ask questions in the chat to see results here.
         </Typography>
       </Paper>
     );
@@ -50,115 +99,115 @@ function QueryResultsTab({ responses }) {
     >
       <Box sx={{ p: 2, borderBottom: '1px solid', borderColor: 'grey.300' }}>
         <Typography variant="h6" gutterBottom>
-          AI Query Responses
+          Query Responses
         </Typography>
-        <Box sx={{ mb: 2 }}>
-          <FormControl size="small" sx={{ minWidth: 200 }}>
-            <InputLabel>Select Response</InputLabel>
-            <Select
-              value={responses.length > 0 ? selectedResponse : ''}
-              label="Select Response"
-              onChange={(e) => setSelectedResponse(e.target.value)}
-            >
-              {responses.map((response, index) => (
-                <MenuItem key={response.id} value={index}>
-                  {response.table.toUpperCase()} - {response.timestamp}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </Box>
-        <Tabs 
-          value={subTab} 
-          onChange={(e, newValue) => setSubTab(newValue)}
-          TabIndicatorProps={{ sx: { backgroundColor: 'primary.main' } }}
-        >
-          <Tab label="Response" sx={{ color: 'text.secondary', '&.Mui-selected': { color: 'primary.main' } }} />
-          <Tab label="Data" sx={{ color: 'text.secondary', '&.Mui-selected': { color: 'primary.main' } }} />
-        </Tabs>
       </Box>
       
-      {subTab === 0 && (
-        <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
-          <ReactMarkdown>{currentResponse?.response || 'No response available'}</ReactMarkdown>
-        </Box>
-      )}
-      
-      {subTab === 1 && (
-        <>
-          <Box sx={{ p: 2, borderBottom: '1px solid', borderColor: 'grey.300' }}>
-            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 2 }}>
-              <Chip label={`${filteredData.length} / ${data.length} records`} color="primary" size="small" />
-              <Chip label={`${columns.length} fields`} variant="outlined" size="small" />
-            </Box>
-            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-              <TextField
-                label="Search"
+      <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
+        {responses.map((response, index) => (
+          <Box 
+            key={response.queryId}
+            ref={el => queryRefs.current[response.queryId] = el}
+            sx={{ mb: 3, border: '1px solid', borderColor: 'grey.300', borderRadius: 1 }}
+          >
+            <Box sx={{ p: 2, bgcolor: 'grey.50', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Box>
+                <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
+                  Query {response.queryId} - {response.table.toUpperCase()}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {response.timestamp}
+                </Typography>
+              </Box>
+              <Chip 
+                label={`${response.messageId}`} 
+                size="small" 
+                color="secondary" 
                 variant="outlined"
-                size="small"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                sx={{ minWidth: 200 }}
+                onClick={() => scrollToMessage?.(response.messageId)}
+                sx={{ cursor: 'pointer' }}
               />
-              <FormControl size="small" sx={{ minWidth: 150 }}>
-                <InputLabel>Search Column</InputLabel>
-                <Select
-                  value={searchColumn}
-                  label="Search Column"
-                  onChange={(e) => setSearchColumn(e.target.value)}
-                >
-                  {columns.map((column) => (
-                    <MenuItem key={column} value={column}>
-                      {column}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
             </Box>
-          </Box>
-          
-          <TableContainer sx={{ flex: 1, overflow: 'auto' }}>
-            <Table stickyHeader size="small">
-              <TableHead>
-                <TableRow>
-                  {columns.map((column) => (
-                    <TableCell 
-                      key={column}
-                      sx={{ 
-                        fontWeight: 'bold',
-                        backgroundColor: 'background.paper',
-                        whiteSpace: 'nowrap',
-                        minWidth: '120px'
-                      }}
+            
+            {response.data && (
+              <Box sx={{ p: 2, borderTop: '1px solid', borderColor: 'grey.300' }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                  <Typography variant="subtitle2">Data Results</Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <IconButton 
+                      size="small" 
+                      onClick={() => loadTableData(response.queryId, response.table, Math.max(0, (currentPage[response.queryId] || 0) - 1))}
+                      disabled={(currentPage[response.queryId] || 0) === 0}
                     >
-                      {column}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {filteredData.map((row, index) => (
-                  <TableRow key={index} hover>
-                    {columns.map((column) => (
-                      <TableCell 
-                        key={column}
-                        sx={{ whiteSpace: 'nowrap', minWidth: '120px' }}
-                      >
-                        {row[column] !== null && row[column] !== undefined 
-                          ? String(row[column]) 
-                          : 'N/A'
-                        }
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </>
-      )}
+                      <ArrowBack />
+                    </IconButton>
+                    <Typography variant="caption">
+                      Page {(currentPage[response.queryId] || 0) + 1}
+                    </Typography>
+                    <IconButton 
+                      size="small" 
+                      onClick={() => loadTableData(response.queryId, response.table, (currentPage[response.queryId] || 0) + 1)}
+                      disabled={!hasMoreData[response.queryId]}
+                    >
+                      <ArrowForward />
+                    </IconButton>
+                  </Box>
+                </Box>
+                
+                <TableContainer sx={{ maxHeight: 300, overflow: 'auto', border: '1px solid', borderColor: 'grey.300' }}>
+                  <Table stickyHeader size="small">
+                    <TableHead>
+                      <TableRow>
+                        {(tableData[response.queryId] || response.data) && safeArrayAccess((tableData[response.queryId] || response.data), 0) && Object.keys(safeArrayAccess((tableData[response.queryId] || response.data), 0)).map((column) => (
+                          <TableCell 
+                            key={column}
+                            sx={{ 
+                              fontWeight: 'bold',
+                              backgroundColor: 'background.paper',
+                              whiteSpace: 'nowrap',
+                              minWidth: '120px'
+                            }}
+                          >
+                            {column}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {(tableData[response.queryId] || response.data || []).slice(0, 10).map((row, rowIndex) => (
+                        <TableRow key={rowIndex} hover>
+                          {Object.keys(row).map((column) => (
+                            <TableCell 
+                              key={column}
+                              sx={{ whiteSpace: 'nowrap', minWidth: '120px' }}
+                            >
+                              {row[column] !== null && row[column] !== undefined 
+                                ? sanitizeText(String(row[column]).substring(0, 200)) 
+                                : 'N/A'
+                              }
+                            </TableCell>
+                          ))}
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </Box>
+            )}
+            
+            {index < responses.length - 1 && <Divider sx={{ mt: 2 }} />}
+          </Box>
+        ))}
+      </Box>
     </Paper>
   );
 }
 
 export default QueryResultsTab;
+
+// Expose scrollToQuery globally
+QueryResultsTab.scrollToQuery = (queryId) => {
+  if (window.scrollToQuery) {
+    window.scrollToQuery(queryId);
+  }
+};

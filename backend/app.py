@@ -29,12 +29,14 @@ def allowed_file(filename):
 
 # Database connection
 DB_CONFIG = {
-    "dbname": "nasa",
-    "user": "postgres", 
-    "password": "prashantshree",
-    "host": "localhost",
-    "port": "5432"
+    "dbname": os.getenv('DB_NAME', 'nasa'),
+    "user": os.getenv('DB_USER', 'postgres'), 
+    "password": os.getenv('DB_PASSWORD', 'prashantshree'),
+    "host": os.getenv('DB_HOST', 'localhost'),
+    "port": os.getenv('DB_PORT', '5432')
 }
+
+ALLOWED_TABLES = ['k2', 'toi', 'cum']
 
 engine = create_engine(f"postgresql://{DB_CONFIG['user']}:{DB_CONFIG['password']}@{DB_CONFIG['host']}:{DB_CONFIG['port']}/{DB_CONFIG['dbname']}")
 
@@ -45,9 +47,12 @@ def get_tables():
 @app.route('/api/table/<table_name>/columns', methods=['GET'])
 def get_columns(table_name):
     try:
-        query = f"SELECT column_name FROM information_schema.columns WHERE table_name = '{table_name}'"
+        if table_name not in ALLOWED_TABLES:
+            return jsonify({'error': 'Invalid table name'}), 400
+        
+        query = text("SELECT column_name FROM information_schema.columns WHERE table_name = :table_name")
         with engine.connect() as conn:
-            result = conn.execute(text(query))
+            result = conn.execute(query, {'table_name': table_name})
             columns = [row[0] for row in result]
         return jsonify(columns)
     except Exception as e:
@@ -56,31 +61,45 @@ def get_columns(table_name):
 @app.route('/api/table/<table_name>/data', methods=['GET'])
 def get_table_data(table_name):
     try:
+        if table_name not in ALLOWED_TABLES:
+            return jsonify({'error': 'Invalid table name'}), 400
+            
         page = int(request.args.get('page', 1))
-        limit = int(request.args.get('limit', 50))
-        search = request.args.get('search', '')
-        search_column = request.args.get('search_column', '')
+        limit = min(int(request.args.get('limit', 50)), 100)  # Cap limit
+        search = request.args.get('search', '').strip()[:100]  # Limit search length
+        search_column = request.args.get('search_column', '').strip()
+        
+        # Validate search column
+        if search_column:
+            query = text("SELECT column_name FROM information_schema.columns WHERE table_name = :table_name")
+            with engine.connect() as conn:
+                result = conn.execute(query, {'table_name': table_name})
+                valid_columns = [row[0] for row in result]
+                if search_column not in valid_columns:
+                    return jsonify({'error': 'Invalid search column'}), 400
         
         offset = (page - 1) * limit
         
-        # Build query
-        base_query = f"SELECT * FROM {table_name}"
-        count_query = f"SELECT COUNT(*) FROM {table_name}"
-        
+        # Build parameterized queries
         if search and search_column:
-            where_clause = f" WHERE {search_column}::text ILIKE '%{search}%'"
-            base_query += where_clause
-            count_query += where_clause
-        
-        data_query = f"{base_query} LIMIT {limit} OFFSET {offset}"
+            base_query = text(f"SELECT * FROM {table_name} WHERE {search_column}::text ILIKE :search")
+            count_query = text(f"SELECT COUNT(*) FROM {table_name} WHERE {search_column}::text ILIKE :search")
+            data_query = text(f"SELECT * FROM {table_name} WHERE {search_column}::text ILIKE :search LIMIT :limit OFFSET :offset")
+            params = {'search': f'%{search}%', 'limit': limit, 'offset': offset}
+            count_params = {'search': f'%{search}%'}
+        else:
+            count_query = text(f"SELECT COUNT(*) FROM {table_name}")
+            data_query = text(f"SELECT * FROM {table_name} LIMIT :limit OFFSET :offset")
+            params = {'limit': limit, 'offset': offset}
+            count_params = {}
         
         with engine.connect() as conn:
             # Get total count
-            total_result = conn.execute(text(count_query))
+            total_result = conn.execute(count_query, count_params)
             total_count = total_result.scalar()
             
             # Get data
-            data_result = conn.execute(text(data_query))
+            data_result = conn.execute(data_query, params)
             columns = data_result.keys()
             rows = [dict(zip(columns, row)) for row in data_result]
         
@@ -134,6 +153,14 @@ def predict_data():
         # Clean up uploaded file
         os.remove(filepath)
         
+        # Add predictions to original data
+        data['exoplanet_prediction'] = predictions
+        
+        # Save result as CSV
+        result_filename = f'predictions_{model_type}_{filename.rsplit(".", 1)[0]}.csv'
+        result_path = os.path.join(app.config['UPLOAD_FOLDER'], result_filename)
+        data.to_csv(result_path, index=False)
+        
         # Schedule cleanup of result file after 5 min
         import threading
         import time
@@ -145,14 +172,6 @@ def predict_data():
         cleanup_thread = threading.Thread(target=cleanup_result)
         cleanup_thread.daemon = True
         cleanup_thread.start()
-        
-        # Add predictions to original data
-        data['exoplanet_prediction'] = predictions
-        
-        # Save result as CSV
-        result_filename = f'predictions_{model_type}_{filename.rsplit(".", 1)[0]}.csv'
-        result_path = os.path.join(app.config['UPLOAD_FOLDER'], result_filename)
-        data.to_csv(result_path, index=False)
         
         # Convert predictions to list if it's a numpy array
         if hasattr(predictions, 'tolist'):
@@ -174,7 +193,16 @@ def predict_data():
 @app.route('/api/download/<filename>', methods=['GET'])
 def download_file(filename):
     try:
+        # Sanitize filename to prevent path traversal
+        filename = secure_filename(filename)
+        if not filename or '..' in filename:
+            return jsonify({'error': 'Invalid filename'}), 400
+            
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        # Ensure file is within upload directory
+        if not os.path.abspath(filepath).startswith(os.path.abspath(app.config['UPLOAD_FOLDER'])):
+            return jsonify({'error': 'Access denied'}), 403
+            
         if os.path.exists(filepath):
             return send_file(filepath, as_attachment=True, download_name=filename)
         else:
@@ -183,11 +211,18 @@ def download_file(filename):
         return jsonify({'error': str(e)}), 500
 
 # Initialize RAG system
-rag_system = RAGGraph()
+try:
+    rag_system = RAGGraph()
+except Exception as e:
+    print(f"Failed to initialize RAG system: {str(e)}")
+    rag_system = None
 
 @app.route('/api/chat', methods=['POST'])
 def chat():
     try:
+        if not rag_system:
+            return jsonify({'error': 'RAG system not initialized'}), 500
+            
         data = request.get_json()
         message = data.get('message', '')
         table = data.get('table', '')
@@ -206,12 +241,57 @@ def chat():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+# Store query results in memory for pagination with TTL
+from collections import OrderedDict
+import time
+
+class QueryCache:
+    def __init__(self, max_size=100, ttl=3600):  # 1 hour TTL
+        self.cache = OrderedDict()
+        self.timestamps = {}
+        self.max_size = max_size
+        self.ttl = ttl
+    
+    def get(self, key):
+        if key in self.cache:
+            if time.time() - self.timestamps[key] < self.ttl:
+                # Move to end (most recently used)
+                self.cache.move_to_end(key)
+                return self.cache[key]
+            else:
+                # Expired
+                del self.cache[key]
+                del self.timestamps[key]
+        return None
+    
+    def set(self, key, value):
+        if key in self.cache:
+            self.cache.move_to_end(key)
+        else:
+            if len(self.cache) >= self.max_size:
+                # Remove oldest
+                oldest = next(iter(self.cache))
+                del self.cache[oldest]
+                del self.timestamps[oldest]
+        
+        self.cache[key] = value
+        self.timestamps[key] = time.time()
+    
+    def __contains__(self, key):
+        return self.get(key) is not None
+
+query_cache = QueryCache()
+
 @app.route('/api/chat/stream', methods=['POST'])
 def chat_stream():
     try:
+        if not rag_system:
+            return jsonify({'error': 'RAG system not initialized'}), 500
+            
         data = request.get_json()
         message = data.get('message', '')
         table = data.get('table', '')
+        query_id = data.get('query_id', 0)
         
         if not message:
             return jsonify({'error': 'Message is required'}), 400
@@ -223,13 +303,22 @@ def chat_stream():
                 # Determine if should open new tab based on LLM decision
                 should_open_tab = result.get('show_in_query_tab', False)
                 
+                # Store query data in memory for pagination
+                if should_open_tab and result.get('data'):
+                    print(f"Caching query {query_id} with {len(result['data'])} records")
+                    query_cache.set(query_id, {
+                        'data': result['data'],
+                        'table': table,
+                        'message': message
+                    })
+                
                 # Stream the response word by word
                 words = result['response'].split(' ')
                 for i, word in enumerate(words):
                     chunk = {
                         'chunk': word + (' ' if i < len(words) - 1 else ''),
                         'done': i == len(words) - 1,
-                        'data': result.get('data') if i == len(words) - 1 else None,
+                        'data': result.get('data')[:10] if result.get('data') and i == len(words) - 1 else None,
                         'open_new_tab': should_open_tab if i == len(words) - 1 else False,
                         'response_type': result.get('response_type', 'ai_only') if i == len(words) - 1 else None
                     }
@@ -251,6 +340,9 @@ def chat_stream():
 @app.route('/api/query/direct', methods=['POST'])
 def execute_direct_query():
     try:
+        if not rag_system:
+            return jsonify({'error': 'RAG system not initialized'}), 500
+            
         data = request.get_json()
         table = data.get('table', '')
         
@@ -266,6 +358,33 @@ def execute_direct_query():
             'data': result['data'],
             'table': result['table'],
             'count': result['count']
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/query/data/<int:query_id>', methods=['GET'])
+def get_query_data(query_id):
+    try:
+        page = int(request.args.get('page', 0))
+        page_size = 10
+        
+        cached_query = query_cache.get(query_id)
+        if not cached_query:
+            return jsonify({'error': 'Query not found or expired'}), 404
+        all_data = cached_query['data']
+        
+        start_idx = page * page_size
+        end_idx = start_idx + page_size
+        
+        page_data = all_data[start_idx:end_idx]
+        
+        return jsonify({
+            'data': page_data,
+            'total': len(all_data),
+            'page': page,
+            'page_size': page_size,
+            'has_next': end_idx < len(all_data)
         })
         
     except Exception as e:

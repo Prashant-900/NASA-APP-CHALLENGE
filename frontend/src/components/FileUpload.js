@@ -6,11 +6,12 @@ import {
 } from '@mui/material';
 import { CloudUpload, Download } from '@mui/icons-material';
 import { dataApi } from '../api';
+import { TABLE_NAMES, TABLE_LABELS } from '../constants';
 
 const FileUpload = ({ persistentState = {}, onStateChange }) => {
   const {
     file = null,
-    modelType = 'k2',
+    modelType = TABLE_NAMES.K2,
     loading = false,
     results = null,
     error = ''
@@ -116,9 +117,9 @@ const FileUpload = ({ persistentState = {}, onStateChange }) => {
               label="Model Type"
               onChange={(e) => updateState({ modelType: e.target.value })}
             >
-              <MenuItem value="k2">K2</MenuItem>
-              <MenuItem value="toi">TOI</MenuItem>
-              <MenuItem value="cum">CUM</MenuItem>
+              <MenuItem value={TABLE_NAMES.K2}>{TABLE_NAMES.K2.toUpperCase()}</MenuItem>
+              <MenuItem value={TABLE_NAMES.TOI}>{TABLE_NAMES.TOI.toUpperCase()}</MenuItem>
+              <MenuItem value={TABLE_NAMES.CUM}>{TABLE_NAMES.CUM.toUpperCase()}</MenuItem>
             </Select>
           </FormControl>
         </Box>

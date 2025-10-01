@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   AppBar,
   Toolbar,
@@ -24,27 +24,32 @@ import DataTable from "./components/DataTable";
 import FileUpload from "./components/FileUpload";
 import ChatArea from "./components/chatbot/ChatArea";
 import QueryResultsTab from "./components/QueryResultsTab";
+import Home from "./components/home/Home";
+import PlanetInfo from "./components/planetinfo/PlanetInfo";
 import { lightTheme, darkTheme } from "./theme";
 import { dataApi } from "./api";
+import { TABLE_NAMES } from "./constants";
 
 function App() {
   const [selectedTab, setSelectedTab] = useState(0);
   const [tables, setTables] = useState([]);
   const [darkMode, setDarkMode] = useState(false);
+  const [planetInfoData, setPlanetInfoData] = useState(null);
+  const [previousTab, setPreviousTab] = useState(0);
 
   // Tab-specific state persistence
   const [tabStates, setTabStates] = useState({
-    0: { // Data Explorer
-      selectedTable: "k2",
-      dataExplorerTab: "table-k2", // sub-tab
+    1: { // Data Explorer
+      selectedTable: TABLE_NAMES.K2,
+      dataExplorerTab: `table-${TABLE_NAMES.K2}`, // sub-tab
       columns: [],
       searchTerm: "",
       searchColumn: "",
       chatOpen: false,
     },
-    1: { // Predict
+    2: { // Predict
       file: null,
-      modelType: 'k2',
+      modelType: TABLE_NAMES.K2,
       loading: false,
       results: null,
       error: ''
@@ -53,6 +58,8 @@ function App() {
 
   // Store AI responses
   const [aiResponses, setAiResponses] = useState([]);
+  const chatAreaRef = useRef(null);
+  const queryTabRef = useRef(null);
 
   const currentTabState = tabStates[selectedTab] || {};
   const { selectedTable, dataExplorerTab, columns, searchTerm, searchColumn, chatOpen } = currentTabState;
@@ -79,7 +86,7 @@ function App() {
   const fetchColumns = async (tableName) => {
     try {
       const response = await dataApi.getTableColumns(tableName);
-      updateTabState(0, { 
+      updateTabState(1, { 
         columns: response.data,
         searchColumn: response.data[0] || ""
       });
@@ -98,7 +105,7 @@ function App() {
   const handleTabChange = (event, newValue) => setSelectedTab(newValue);
 
   const handleTableSubTabChange = (event, newValue) => {
-    updateTabState(0, {
+    updateTabState(1, {
       dataExplorerTab: newValue,
       selectedTable: newValue.startsWith("table-") ? newValue.replace("table-", "") : selectedTable,
       searchTerm: newValue.startsWith("table-") ? "" : searchTerm
@@ -106,7 +113,7 @@ function App() {
   };
 
   const toggleDarkMode = () => setDarkMode(!darkMode);
-  const toggleChat = () => updateTabState(0, { chatOpen: !chatOpen });
+  const toggleChat = () => updateTabState(1, { chatOpen: !chatOpen });
 
   const handleOpenNewTab = (data, table, response) => {
     const newResponse = {
@@ -119,7 +126,30 @@ function App() {
     setAiResponses(prev => [...prev, newResponse]);
     
     // Auto-switch to Query Response tab when new data is added
-    updateTabState(0, { dataExplorerTab: 'query-response' });
+    updateTabState(1, { dataExplorerTab: 'query-response' });
+  };
+  
+  const scrollToMessage = useCallback((messageId) => {
+    if (chatAreaRef.current?.scrollToMessage) {
+      chatAreaRef.current.scrollToMessage(messageId);
+    }
+  }, []);
+  
+  const scrollToQuery = useCallback((queryId) => {
+    if (queryTabRef.current?.scrollToQuery) {
+      queryTabRef.current.scrollToQuery(queryId);
+    }
+  }, []);
+
+  const handleRowClick = (rowData) => {
+    setPreviousTab(selectedTab);
+    setPlanetInfoData(rowData);
+    setSelectedTab(3); // Hidden tab index
+  };
+
+  const handleBackFromPlanetInfo = () => {
+    setSelectedTab(previousTab);
+    setPlanetInfoData(null);
   };
 
   return (
@@ -130,6 +160,7 @@ function App() {
           <Toolbar sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", backgroundColor: 'background.default' }}>
             <Typography variant="h6" sx={{ color: 'primary.main' }}>Exoplanet Detection Dashboard</Typography>
             <Tabs value={selectedTab} onChange={handleTabChange} TabIndicatorProps={{ sx: { backgroundColor: 'primary.main' } }}>
+              <Tab label="Home" />
               <Tab label="Data Explorer" />
               <Tab label="Predict" />
             </Tabs>
@@ -142,6 +173,10 @@ function App() {
         <Container maxWidth={false} sx={{ px: 2, flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           
           {selectedTab === 0 && (
+            <Home />
+          )}
+
+          {selectedTab === 1 && (
             <>
               <Paper elevation={0} sx={{ p: 2, mb: 2, display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: '1px solid', borderColor: 'grey.300', backgroundColor: 'background.default' }}>
                 <Tabs
@@ -158,10 +193,10 @@ function App() {
                 <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
                   {dataExplorerTab.startsWith("table-") && (
                     <>
-                      <TextField label="Search" variant="outlined" size="small" value={searchTerm || ""} onChange={(e) => updateTabState(0, { searchTerm: e.target.value })} sx={{ minWidth: 200 }} />
+                      <TextField label="Search" variant="outlined" size="small" value={searchTerm || ""} onChange={(e) => updateTabState(1, { searchTerm: e.target.value })} sx={{ minWidth: 200 }} />
                       <FormControl size="small" sx={{ minWidth: 150 }}>
                         <InputLabel>Search Column</InputLabel>
-                        <Select value={searchColumn || ""} label="Search Column" onChange={(e) => updateTabState(0, { searchColumn: e.target.value })}>
+                        <Select value={searchColumn || ""} label="Search Column" onChange={(e) => updateTabState(1, { searchColumn: e.target.value })}>
                           {columns.map(column => <MenuItem key={column} value={column}>{column}</MenuItem>)}
                         </Select>
                       </FormControl>
@@ -174,20 +209,24 @@ function App() {
               <Box sx={{ flex: 1, display: 'flex', flexDirection: 'row', overflow: 'hidden' }}>
                 <motion.div animate={{ width: chatOpen ? '60%' : '100%' }} transition={{ duration: 0.3, ease: 'easeInOut' }} style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                   {dataExplorerTab === "query-response" ? (
-                    <QueryResultsTab responses={aiResponses} />
+                    <QueryResultsTab ref={queryTabRef} scrollToMessage={scrollToMessage} />
                   ) : (
-                    <DataTable tableName={selectedTable} searchTerm={searchTerm} searchColumn={searchColumn} />
+                    <DataTable tableName={selectedTable} searchTerm={searchTerm} searchColumn={searchColumn} onRowClick={handleRowClick} />
                   )}
                 </motion.div>
-                <ChatArea isOpen={chatOpen} onClose={() => updateTabState(0, { chatOpen: false })} currentTable={selectedTable} onOpenNewTab={handleOpenNewTab} />
+                <ChatArea ref={chatAreaRef} isOpen={chatOpen} onClose={() => updateTabState(1, { chatOpen: false })} currentTable={selectedTable} onOpenNewTab={handleOpenNewTab} scrollToQuery={scrollToQuery} />
               </Box>
             </>
           )}
 
-          {selectedTab === 1 && (
-            <FileUpload persistentState={tabStates[1] || {}} onStateChange={(updates) => updateTabState(1, updates)} />
+          {selectedTab === 2 && (
+            <FileUpload persistentState={tabStates[2] || {}} onStateChange={(updates) => updateTabState(2, updates)} />
           )}
 
+          {selectedTab === 3 && (
+            <PlanetInfo planetData={planetInfoData} onBack={handleBackFromPlanetInfo} />
+          )}
+          
 
         </Container>
       </Box>

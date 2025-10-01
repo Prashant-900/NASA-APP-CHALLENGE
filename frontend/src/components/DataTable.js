@@ -4,51 +4,21 @@ import {
   TableRow, Paper, CircularProgress, Box,
   TablePagination
 } from '@mui/material';
-import { dataApi } from '../api';
+import { useTableData } from '../hooks';
+import { validateRowData, sanitizeText } from '../utils';
+import { PAGINATION } from '../constants';
 
-function DataTable({ tableName, searchTerm, searchColumn }) {
-  const [data, setData] = useState([]);
-  const [columns, setColumns] = useState([]);
-  const [loading, setLoading] = useState(false);
+function DataTable({ tableName, searchTerm, searchColumn, onRowClick }) {
   const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(50);
-  const [totalCount, setTotalCount] = useState(0);
-
-  const fetchData = useCallback(async () => {
-    if (!tableName) return;
-    
-    setLoading(true);
-    try {
-      const params = {
-        page: page + 1,
-        limit: rowsPerPage,
-        search: searchTerm,
-        search_column: searchColumn
-      };
-
-      const response = await dataApi.getTableData(tableName, params);
-      const result = response.data;
-      
-      setData(result.data);
-      setTotalCount(result.total);
-      
-      if (result.data.length > 0) {
-        setColumns(Object.keys(result.data[0]));
-      }
-    } catch (error) {
-      console.error('Error fetching data:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [tableName, page, rowsPerPage, searchTerm, searchColumn]);
+  const [rowsPerPage, setRowsPerPage] = useState(PAGINATION.DEFAULT_ROWS_PER_PAGE);
+  
+  const { data, columns, loading, totalCount } = useTableData(
+    tableName, searchTerm, searchColumn, page, rowsPerPage
+  );
 
   useEffect(() => {
-    setPage(0); // Reset to first page when search changes
+    setPage(0);
   }, [searchTerm, searchColumn, tableName]);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
 
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
@@ -109,7 +79,12 @@ function DataTable({ tableName, searchTerm, searchColumn }) {
           </TableHead>
           <TableBody>
             {data.map((row, index) => (
-              <TableRow key={index} hover>
+              <TableRow 
+                key={index} 
+                hover 
+                onClick={() => validateRowData(row) && onRowClick?.(row)}
+                sx={{ cursor: onRowClick ? 'pointer' : 'default' }}
+              >
                 {columns.map((column) => (
                   <TableCell 
                     key={column}
@@ -119,7 +94,7 @@ function DataTable({ tableName, searchTerm, searchColumn }) {
                     }}
                   >
                     {row[column] !== null && row[column] !== undefined 
-                      ? String(row[column]) 
+                      ? sanitizeText(String(row[column])) 
                       : 'N/A'
                     }
                   </TableCell>
@@ -143,7 +118,7 @@ function DataTable({ tableName, searchTerm, searchColumn }) {
         onPageChange={handleChangePage}
         rowsPerPage={rowsPerPage}
         onRowsPerPageChange={handleChangeRowsPerPage}
-        rowsPerPageOptions={[25, 50, 100]}
+        rowsPerPageOptions={PAGINATION.ROWS_PER_PAGE_OPTIONS}
       />
     </Paper>
   );

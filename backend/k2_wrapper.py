@@ -6,7 +6,12 @@ from sklearn.impute import KNNImputer, IterativeImputer
 import catboost
 req_col = ["pl_orbper","pl_rade","st_teff","st_rad","st_mass","st_logg","sy_dist","sy_vmag","sy_kmag","sy_gaiamag"]
 
-model = catboost.CatBoostClassifier().load_model("C:/MYSPACE/CODE/NASA/backend/models/k2.bin")
+try:
+    model = catboost.CatBoostClassifier().load_model("C:/MYSPACE/CODE/NASA/backend/models/k2.bin")
+except FileNotFoundError:
+    raise FileNotFoundError("K2 model file not found. Please ensure models/k2.bin exists.")
+except Exception as e:
+    raise RuntimeError(f"Failed to load K2 model: {str(e)}")
 
 def preprocess(X):
     # 1. Log transform skewed columns
@@ -43,9 +48,20 @@ def preprocess(X):
 
 def predict(data):
     if not isinstance(data, pd.DataFrame):
-        return "Invalid data"
-    if data[req_col].values.shape[1] != len(req_col):
-        return "Invalid data"
+        return "Invalid data: Input must be a pandas DataFrame"
     
-    data = preprocess(data[req_col])
-    return model.predict(data)
+    try:
+        # Check if all required columns are present
+        missing_cols = [col for col in req_col if col not in data.columns]
+        if missing_cols:
+            return f"Invalid data: Missing required columns: {missing_cols}"
+        
+        if data[req_col].values.shape[1] != len(req_col):
+            return "Invalid data: Column count mismatch"
+        
+        data = preprocess(data[req_col])
+        return model.predict(data)
+    except KeyError as e:
+        return f"Invalid data: Column access error: {str(e)}"
+    except Exception as e:
+        return f"Prediction error: {str(e)}"

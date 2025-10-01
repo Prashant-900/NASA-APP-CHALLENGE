@@ -1,58 +1,64 @@
-import React, { useState } from 'react';
-import { Box, Paper, IconButton, Typography, TextField, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
+import React, { useState, useRef, forwardRef, useImperativeHandle, useCallback } from 'react';
+import { Box, Paper, IconButton, Typography, TextField, FormControl, InputLabel, Select, MenuItem, Chip } from '@mui/material';
 import { Close, Send } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
-import ReactMarkdown from 'react-markdown';
 import { chatApi } from '../../api';
+import { addMessage, updateMessage, addQueryResponse, getNextMessageId } from '../../store/chatStore';
+import { useChatMessages } from '../../hooks';
+import MarkdownRenderer from '../common/MarkdownRenderer';
+import { TABLE_NAMES, TABLE_LABELS } from '../../constants';
 
-function ChatArea({ isOpen, onClose, currentTable, onOpenNewTab }) {
-  const [messages, setMessages] = useState([]);
+const ChatArea = forwardRef(({ isOpen, onClose, currentTable, onOpenNewTab, scrollToQuery }, ref) => {
+  const messages = useChatMessages();
   const [inputMessage, setInputMessage] = useState('');
-  const [messageIdCounter, setMessageIdCounter] = useState(0);
-  const [selectedTable, setSelectedTable] = useState(currentTable || 'k2');
+  const [selectedTable, setSelectedTable] = useState(currentTable || TABLE_NAMES.K2);
+  const messageRefs = useRef({});
+  
+  const scrollToMessage = useCallback((messageId) => {
+    messageRefs.current[messageId]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, []);
+  
+  useImperativeHandle(ref, () => ({ scrollToMessage }), [scrollToMessage]);
 
   const handleSendMessage = async () => {
     if (inputMessage.trim()) {
-      const userMessage = { id: messageIdCounter, text: inputMessage, sender: 'user' };
-      setMessages([...messages, userMessage]);
+      const userMessage = { id: getNextMessageId(), text: inputMessage, sender: 'user' };
+      addMessage(userMessage);
       const currentInput = inputMessage;
       setInputMessage('');
-      setMessageIdCounter(prev => prev + 1);
       
       // Create initial bot message
-      const botMessageId = messageIdCounter + 1;
+      const botMessageId = getNextMessageId();
       const botMessage = { 
         id: botMessageId, 
         text: '', 
         sender: 'bot',
         streaming: true
       };
-      setMessages(prev => [...prev, botMessage]);
-      setMessageIdCounter(prev => prev + 2);
+      addMessage(botMessage);
       
       // Stream response
       let fullResponse = '';
-      await chatApi.sendMessageStream(currentInput, selectedTable, (chunk) => {
+      await chatApi.sendMessageStream(currentInput, selectedTable, botMessageId, (chunk) => {
         if (chunk.chunk) {
           fullResponse += chunk.chunk;
-          setMessages(prev => prev.map(msg => 
-            msg.id === botMessageId 
-              ? { ...msg, text: fullResponse, streaming: !chunk.done, data: chunk.data }
-              : msg
-          ));
+          updateMessage(botMessageId, { text: fullResponse, streaming: !chunk.done, data: chunk.data });
         }
         
         if (chunk.done && chunk.open_new_tab && chunk.data) {
-          // Pass response type to determine how to handle the data
+          console.log('Received data for query:', chunk.data);
+          const queryId = addQueryResponse({
+            response: fullResponse,
+            data: chunk.data,
+            table: selectedTable,
+            messageId: botMessageId
+          });
+          updateMessage(botMessageId, { queryId });
           onOpenNewTab?.(chunk.data, selectedTable, fullResponse);
         }
         
         if (chunk.error) {
-          setMessages(prev => prev.map(msg => 
-            msg.id === botMessageId 
-              ? { ...msg, text: `Error: ${chunk.error}`, streaming: false }
-              : msg
-          ));
+          updateMessage(botMessageId, { text: `Error: ${chunk.error}`, streaming: false });
         }
       });
     }
@@ -112,6 +118,9 @@ function ChatArea({ isOpen, onClose, currentTable, onOpenNewTab }) {
         {messages.map((message) => (
           <Box
             key={message.id}
+            ref={el => {
+              if (el) messageRefs.current[message.id] = el;
+            }}
             sx={{
               alignSelf: message.sender === 'user' ? 'flex-end' : 'flex-start',
               maxWidth: '80%',
@@ -122,24 +131,22 @@ function ChatArea({ isOpen, onClose, currentTable, onOpenNewTab }) {
             }}
           >
             {message.sender === 'bot' ? (
-              <ReactMarkdown 
-                components={{
-                  p: ({ children }) => <Typography variant="body2" sx={{ mb: 1, color: 'inherit' }}>{children}</Typography>,
-                  h1: ({ children }) => <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1, color: 'inherit' }}>{children}</Typography>,
-                  h2: ({ children }) => <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1, color: 'inherit' }}>{children}</Typography>,
-                  h3: ({ children }) => <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1, color: 'inherit' }}>{children}</Typography>,
-                  ul: ({ children }) => <Box component="ul" sx={{ pl: 2, mb: 1, color: 'inherit' }}>{children}</Box>,
-                  ol: ({ children }) => <Box component="ol" sx={{ pl: 2, mb: 1, color: 'inherit' }}>{children}</Box>,
-                  li: ({ children }) => <Typography component="li" variant="body2" sx={{ color: 'inherit' }}>{children}</Typography>,
-                  code: ({ children }) => <Typography component="code" sx={{ bgcolor: 'background.default', color: 'text.primary', p: 0.5, borderRadius: 1, fontFamily: 'monospace', border: '1px solid', borderColor: 'grey.300' }}>{children}</Typography>,
-                  pre: ({ children }) => <Box component="pre" sx={{ bgcolor: 'background.default', color: 'text.primary', p: 1, borderRadius: 1, overflow: 'auto', fontFamily: 'monospace', border: '1px solid', borderColor: 'grey.300' }}>{children}</Box>,
-                  table: ({ children }) => <Box component="table" sx={{ width: '100%', borderCollapse: 'collapse', mb: 1 }}>{children}</Box>,
-                  th: ({ children }) => <Typography component="th" sx={{ border: '1px solid', borderColor: 'grey.300', p: 0.5, bgcolor: 'grey.200', fontWeight: 'bold', color: 'text.primary' }}>{children}</Typography>,
-                  td: ({ children }) => <Typography component="td" sx={{ border: '1px solid', borderColor: 'grey.300', p: 0.5, color: 'inherit' }}>{children}</Typography>,
-                }}
-              >
-                {message.text || (message.streaming ? 'Thinking...' : '')}
-              </ReactMarkdown>
+              <Box>
+                <MarkdownRenderer 
+                  content={message.text || (message.streaming ? 'Thinking...' : '')}
+                  color="inherit"
+                />
+                {message.queryId !== undefined && (
+                  <Chip 
+                    label={`${message.queryId}`} 
+                    size="small" 
+                    color="primary" 
+                    variant="outlined"
+                    onClick={() => scrollToQuery?.(message.queryId)}
+                    sx={{ mt: 1, cursor: 'pointer' }}
+                  />
+                )}
+              </Box>
             ) : (
               <Typography variant="body2">{message.text}</Typography>
             )}
@@ -163,9 +170,9 @@ function ChatArea({ isOpen, onClose, currentTable, onOpenNewTab }) {
               label="Research Dataset"
               onChange={(e) => setSelectedTable(e.target.value)}
             >
-              <MenuItem value="k2">K2 Mission Data</MenuItem>
-              <MenuItem value="toi">TESS Objects of Interest</MenuItem>
-              <MenuItem value="cum">Cumulative Exoplanet Data</MenuItem>
+              <MenuItem value={TABLE_NAMES.K2}>{TABLE_LABELS[TABLE_NAMES.K2]}</MenuItem>
+              <MenuItem value={TABLE_NAMES.TOI}>{TABLE_LABELS[TABLE_NAMES.TOI]}</MenuItem>
+              <MenuItem value={TABLE_NAMES.CUM}>{TABLE_LABELS[TABLE_NAMES.CUM]}</MenuItem>
             </Select>
           </FormControl>
         </Box>
@@ -188,6 +195,6 @@ function ChatArea({ isOpen, onClose, currentTable, onOpenNewTab }) {
       )}
     </AnimatePresence>
   );
-}
+});
 
 export default ChatArea;
