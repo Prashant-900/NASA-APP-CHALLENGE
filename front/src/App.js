@@ -21,12 +21,12 @@ import { Brightness4, Brightness7, Chat } from "@mui/icons-material";
 import { motion } from "framer-motion";
 
 import DataTable from "./components/DataTable";
-import FileUpload from "./components/FileUpload";
+import Predict from "./components/predict/Predict";
 import ChatArea from "./components/chatbot/ChatArea";
 import QueryResultsTab from "./components/QueryResultsTab";
 import Home from "./components/home/Home";
+import About from "./components/about/About";
 import PlanetInfo from "./components/planetinfo/PlanetInfo";
-import About from "./components/About";
 import { lightTheme, darkTheme } from "./theme";
 import { dataApi } from "./api";
 import { TABLE_NAMES } from "./constants";
@@ -157,7 +157,7 @@ function App() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <Box sx={{ backgroundColor: 'background.default', height: '100vh', display: 'flex', flexDirection: 'column' }}>
-        <AppBar position="static" elevation={0} sx={{ borderBottom: '1px solid', borderColor: 'grey.300' }}>
+        <AppBar position="static" elevation={0} sx={{ borderBottom: '1px solid', borderColor: 'grey.300', zIndex:1 }}>
           <Toolbar sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", backgroundColor: 'background.default' }}>
             <Typography variant="h6" sx={{ color: 'primary.main' }}>Exoplanet Detection Dashboard</Typography>
             <Tabs value={selectedTab} onChange={handleTabChange} TabIndicatorProps={{ sx: { backgroundColor: 'primary.main' } }}>
@@ -222,7 +222,11 @@ function App() {
           )}
 
           {selectedTab === 2 && (
-            <FileUpload persistentState={tabStates[2] || {}} onStateChange={(updates) => updateTabState(2, updates)} />
+            <Predict 
+              persistentState={tabStates[2] || {}} 
+              onStateChange={(updates) => updateTabState(2, updates)} 
+              onViewPlanetInfo={handleRowClick}
+            />
           )}
 
           {selectedTab === 3 && (
@@ -230,6 +234,10 @@ function App() {
           )}
 
           {selectedTab === 4 && (
+            <PlanetInfo planetData={planetInfoData} onBack={handleBackFromPlanetInfo} />
+          )}
+
+          {selectedTab === 5 && (
             <PlanetInfo planetData={planetInfoData} onBack={handleBackFromPlanetInfo} />
           )}
           

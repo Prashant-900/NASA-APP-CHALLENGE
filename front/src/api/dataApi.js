@@ -61,3 +61,13 @@ export const predictManual = async (data) => {
     throw error;
   }
 };
+
+export const searchPlanet = async (planetName) => {
+  try {
+    const response = await apiClient.get(`/search/planet?name=${encodeURIComponent(planetName)}`);
+    return response;
+  } catch (error) {
+    console.error('Error searching planet:', error);
+    throw error;
+  }
+};

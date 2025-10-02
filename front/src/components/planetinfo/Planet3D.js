@@ -11,6 +11,7 @@ import texture_6 from "../../assets/texture_6.jpg";
 import texture_7 from "../../assets/texture_7.jpg";
 import texture_8 from "../../assets/texture_8.jpg";
 import texture_9 from "../../assets/texture_9.jpg";
+import { PLANET_FEATURE_MAPPING } from "../../constants/planetMapping";
 
 function Planet3D({ planetData }) {
   const mountRef = useRef(null);
@@ -19,23 +20,37 @@ function Planet3D({ planetData }) {
     if (!planetData) return;
 
     // Identify dataset type
-    const isK2 = planetData.pl_rade !== undefined;
-    const isTOI = planetData.toi !== undefined;
-    const isCUM = planetData.koi_prad !== undefined;
+    const isPredictionData = planetData.model_type !== undefined;
+    let datasetType = null;
+    
+    if (isPredictionData) {
+      datasetType = planetData.model_type;
+    } else {
+      // Detect dataset type from available fields
+      if (planetData.hostname !== undefined) datasetType = 'k2';
+      else if (planetData.toi !== undefined) datasetType = 'toi';
+      else if (planetData.kepler_name !== undefined) datasetType = 'cum';
+    }
 
     let planetRadius, planetWeight, planetName;
-    if (isK2) {
-      planetRadius = planetData.pl_rade || null;
-      planetWeight = planetData.pl_masse || null;
-      planetName = planetData.pl_name || null;
-    } else if (isTOI) {
-      planetRadius = planetData.pl_rade || null;
+    
+    if (isPredictionData) {
+      // For prediction data, use the input features based on dataset type
+      const mapping = PLANET_FEATURE_MAPPING[datasetType] || PLANET_FEATURE_MAPPING.k2;
+      planetRadius = planetData[mapping.radius] || planetData.pl_rade || 1;
+      planetWeight = mapping.weight ? planetData[mapping.weight] : null;
+      planetName = `Predicted ${planetData.prediction ? 'Exoplanet' : 'Non-Exoplanet'}`;
+    } else if (datasetType && PLANET_FEATURE_MAPPING[datasetType]) {
+      // For actual dataset, use the mapping
+      const mapping = PLANET_FEATURE_MAPPING[datasetType];
+      planetRadius = planetData[mapping.radius] || null;
+      planetWeight = mapping.weight ? planetData[mapping.weight] : null;
+      planetName = planetData[mapping.name] || null;
+    } else {
+      // Fallback
+      planetRadius = 1;
       planetWeight = null;
-      planetName = planetData.toi || null;
-    } else if (isCUM) {
-      planetRadius = planetData.koi_prad || null;
-      planetWeight = null;
-      planetName = planetData.kepler_name || null;
+      planetName = 'Unknown Planet';
     }
 
     const earthRadius = 1;
@@ -128,10 +143,10 @@ function Planet3D({ planetData }) {
       const nameLabel = createTextSprite(name || "Unknown", new THREE.Vector3(posX, radius + 0.5, 0));
       scene.add(nameLabel);
 
-      const massLabel = createTextSprite(`Mass: ${weight || "N/A"} Earth masses`, new THREE.Vector3(posX, -(radius + 0.5), 0));
+      const massLabel = createTextSprite(`Mass: ${weight || "N/A"}${weight ? ' Earth masses' : ''}`, new THREE.Vector3(posX, -(radius + 0.5), 0));
       scene.add(massLabel);
 
-      const radiusLabel = createTextSprite(`Radius: ${radius}`, new THREE.Vector3(posX, 0.3, radius + 0.3));
+      const radiusLabel = createTextSprite(`Radius: ${radius} Earth radii`, new THREE.Vector3(posX, 0.3, radius + 0.3));
       scene.add(radiusLabel);
     };
 

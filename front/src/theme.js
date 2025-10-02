@@ -45,6 +45,10 @@ const lightTheme = createTheme({
   components: {
     MuiCssBaseline: {
       styleOverrides: {
+        ':root': {
+          '--bg-paper': '#ffffff',
+          '--border-color': '#e0e0e0',
+        },
         '*::-webkit-scrollbar': {
           width: '8px',
           height: '8px',
@@ -103,6 +107,10 @@ const darkTheme = createTheme({
   components: {
     MuiCssBaseline: {
       styleOverrides: {
+        ':root': {
+          '--bg-paper': '#000000',
+          '--border-color': '#333333',
+        },
         '*::-webkit-scrollbar': {
           width: '8px',
           height: '8px',

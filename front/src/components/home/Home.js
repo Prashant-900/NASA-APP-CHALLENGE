@@ -1,96 +1,277 @@
-import React from 'react';
-import { Box, Typography, Paper, Grid, Card, CardContent } from '@mui/material';
-import { Explore, Analytics, Psychology } from '@mui/icons-material';
-import StarfieldBackground from '../common/StarfieldBackground';
+import React, { useState, useEffect, useRef } from "react";
+import {
+  Box,
+  TextField,
+  Button,
+  Typography,
+  CircularProgress,
+} from "@mui/material";
+import { Search } from "@mui/icons-material";
+import { motion } from "framer-motion";
+import { useTheme } from "@mui/material/styles";
+import { searchPlanet } from "../../api/dataApi";
+import StarfieldBackground from "../common/StarfieldBackground";
+import PlanetResult from "./PlanetResult";
+import bhvid from "../../assets/blackhole.webm";
+import Page2 from "./page2";
+import Page3 from "./page3";
+import Page4 from "./page4";
 
 function Home() {
+  const theme = useTheme();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
+  const [showResult, setShowResult] = useState(false);
+  const [imageAtTop, setImageAtTop] = useState(false);
+  const containerRef = useRef(null);
+  const isScrollingRef = useRef(false);
+
+  const handleSearch = async () => {
+    if (!searchTerm.trim()) return;
+    setLoading(true);
+    setShowResult(false);
+
+    try {
+      const response = await searchPlanet(searchTerm.trim());
+      setResult(response.data);
+      setShowResult(true);
+    } catch (error) {
+      setResult({ found: false });
+      setShowResult(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCloseResult = () => {
+    setShowResult(false);
+    setResult(null);
+  };
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const handleWheel = (e) => {
+      if (isScrollingRef.current || showResult) {
+        e.preventDefault();
+        return;
+      }
+
+      const scrollY = container.scrollTop;
+      const pageHeight = window.innerHeight;
+      const currentPage = Math.round(scrollY / pageHeight);
+
+      e.preventDefault();
+      isScrollingRef.current = true;
+
+      let targetPage;
+      if (e.deltaY > 0) {
+        // Scroll down - go to next page
+        targetPage = Math.min(currentPage + 1, 3);
+      } else {
+        // Scroll up - go to previous page
+        targetPage = Math.max(currentPage - 1, 0);
+      }
+
+      container.scrollTo({ top: targetPage * pageHeight, behavior: "smooth" });
+      setImageAtTop(targetPage > 0);
+
+      setTimeout(() => {
+        isScrollingRef.current = false;
+      }, 600);
+    };
+
+    // Handle touch events for mobile
+    let touchStartY = 0;
+    const handleTouchStart = (e) => {
+      touchStartY = e.touches[0].clientY;
+    };
+
+    const handleTouchMove = (e) => {
+      if (isScrollingRef.current || showResult) {
+        e.preventDefault();
+        return;
+      }
+
+      const touchY = e.touches[0].clientY;
+      const diff = touchStartY - touchY;
+      const scrollY = container.scrollTop;
+      const pageHeight = window.innerHeight;
+      const currentPage = Math.round(scrollY / pageHeight);
+
+      if (Math.abs(diff) > 50) {
+        e.preventDefault();
+        isScrollingRef.current = true;
+
+        let targetPage;
+        if (diff > 0) {
+          // Swipe up - go to next page
+          targetPage = Math.min(currentPage + 1, 3);
+        } else {
+          // Swipe down - go to previous page
+          targetPage = Math.max(currentPage - 1, 0);
+        }
+
+        container.scrollTo({
+          top: targetPage * pageHeight,
+          behavior: "smooth",
+        });
+        setImageAtTop(targetPage > 0);
+
+        setTimeout(() => {
+          isScrollingRef.current = false;
+        }, 600);
+      }
+    };
+
+    container.addEventListener("wheel", handleWheel, { passive: false });
+    container.addEventListener("touchstart", handleTouchStart, {
+      passive: false,
+    });
+    container.addEventListener("touchmove", handleTouchMove, {
+      passive: false,
+    });
+
+    return () => {
+      container.removeEventListener("wheel", handleWheel);
+      container.removeEventListener("touchstart", handleTouchStart);
+      container.removeEventListener("touchmove", handleTouchMove);
+    };
+  }, []);
+
   return (
-    <Box sx={{ position: 'relative', height: '100vh', overflow: 'hidden' }}>
+    <Box
+      ref={containerRef}
+      className="home-container"
+      sx={{
+        position: "relative",
+        height: "100vh",
+        overflowY: "auto",
+        overflowX: "hidden",
+        "&::-webkit-scrollbar": {
+          display: "none",
+        },
+        msOverflowStyle: "none",
+        scrollbarWidth: "none",
+      }}
+    >
       {/* Background */}
-      <Box sx={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 0 }}>
+      <Box
+        sx={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          width: "100%",
+          height: "100%",
+          zIndex: 1,
+          pointerEvents: "none",
+        }}
+      >
         <StarfieldBackground />
       </Box>
 
-      {/* Foreground content */}
-      <Box sx={{ p: 3, height: '100%', overflow: 'auto', position: 'relative', zIndex: 1 }}>
-        <Typography variant="h4" gutterBottom sx={{ color: 'primary.main', mb: 4 }}>
-          Welcome to Exoplanet Detection Dashboard
-        </Typography>
+      {/* Floating video - hidden in light mode */}
+      {theme.palette.mode === "dark" && (
+        <motion.video
+          autoPlay
+          loop
+          muted
+          style={{
+            width: "80vw",
+            borderRadius: "50%",
+            position: "fixed",
+            left: "50%",
+            zIndex: 0,
+            objectFit: "cover",
+          }}
+          animate={
+            imageAtTop
+              ? { top: "7%", bottom: "auto", transform: "translate(-50%, -50%)" }
+              : { top: "auto", bottom: "0", transform: "translate(-50%, 50%)" }
+          }
+          transition={{ duration: 0.6, ease: "easeInOut" }}
+        >
+          <source src={bhvid} type="video/mp4" />
+        </motion.video>
+      )}
 
-        <Typography variant="body1" sx={{ mb: 4, color: 'text.secondary' }}>
-          Explore exoplanet data from multiple missions and make predictions using advanced machine learning models.
-        </Typography>
-
-        <Grid container spacing={3}>
-          <Grid item xs={12} md={4}>
-            <Card elevation={2} sx={{ height: '100%' }}>
-              <CardContent sx={{ textAlign: 'center', p: 3 }}>
-                <Explore sx={{ fontSize: 48, color: 'primary.main', mb: 2 }} />
-                <Typography variant="h6" gutterBottom>
-                  Data Explorer
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Browse and search through K2, TOI, and CUM datasets with interactive tables and AI-powered queries.
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          <Grid item xs={12} md={4}>
-            <Card elevation={2} sx={{ height: '100%' }}>
-              <CardContent sx={{ textAlign: 'center', p: 3 }}>
-                <Psychology sx={{ fontSize: 48, color: 'primary.main', mb: 2 }} />
-                <Typography variant="h6" gutterBottom>
-                  Prediction Models
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Upload your data and get exoplanet predictions using trained models for different mission datasets.
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          <Grid item xs={12} md={4}>
-            <Card elevation={2} sx={{ height: '100%' }}>
-              <CardContent sx={{ textAlign: 'center', p: 3 }}>
-                <Analytics sx={{ fontSize: 48, color: 'primary.main', mb: 2 }} />
-                <Typography variant="h6" gutterBottom>
-                  AI Research Assistant
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Ask questions about the data and get intelligent responses with automated analysis and insights.
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
-
-        <Paper elevation={1} sx={{ mt: 4, p: 3, backgroundColor: 'background.paper' }}>
-          <Typography variant="h6" gutterBottom>
-            Available Datasets
+      {/* Page 1 */}
+      <Box
+        sx={{
+          height: "100vh",
+          p: 3,
+          position: "relative",
+          zIndex: 1,
+          display: "flex",
+        }}
+      >
+        <Box
+          sx={{
+            width: "40%",
+            pr: 3,
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+          }}
+        >
+          <Typography
+            variant="h3"
+            gutterBottom
+            sx={{ color: "primary.main", mb: 4, fontWeight: "bold" }}
+          >
+            Exoplanet Discovery
           </Typography>
-          <Grid container spacing={2}>
-            <Grid item xs={12} md={4}>
-              <Typography variant="subtitle1" color="primary.main">K2 Mission Data</Typography>
-              <Typography variant="body2" color="text.secondary">
-                Kepler K2 mission exoplanet candidates and confirmed planets
-              </Typography>
-            </Grid>
-            <Grid item xs={12} md={4}>
-              <Typography variant="subtitle1" color="primary.main">TESS Objects of Interest</Typography>
-              <Typography variant="body2" color="text.secondary">
-                Transiting Exoplanet Survey Satellite candidate objects
-              </Typography>
-            </Grid>
-            <Grid item xs={12} md={4}>
-              <Typography variant="subtitle1" color="primary.main">Cumulative Data</Typography>
-              <Typography variant="body2" color="text.secondary">
-                Combined exoplanet data from multiple missions and surveys
-              </Typography>
-            </Grid>
-          </Grid>
-        </Paper>
+
+          <Typography variant="h6" sx={{ mb: 4, color: "text.secondary" }}>
+            Search and explore planets across K2, TOI, and CUM datasets
+          </Typography>
+
+          <Box sx={{ display: "flex", gap: 2, mb: 4 }}>
+            <TextField
+              fullWidth
+              variant="outlined"
+              placeholder="Enter planet name..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onKeyPress={(e) => e.key === "Enter" && handleSearch()}
+              disabled={loading}
+            />
+            <Button
+              variant="contained"
+              onClick={handleSearch}
+              disabled={loading || !searchTerm.trim()}
+              sx={{ minWidth: "120px", height: "56px" }}
+            >
+              {loading ? (
+                <CircularProgress size={24} />
+              ) : (
+                <>
+                  <Search sx={{ mr: 1 }} />
+                  Search
+                </>
+              )}
+            </Button>
+          </Box>
+        </Box>
+
+        <Box
+          sx={{
+            width: "60%",
+            pl: 3,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <PlanetResult result={result} isVisible={showResult} onClose={handleCloseResult} />
+        </Box>
       </Box>
+
+      <Page2 />
+      <Page3 />
+      <Page4 />
     </Box>
   );
 }
