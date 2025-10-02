@@ -26,6 +26,7 @@ import ChatArea from "./components/chatbot/ChatArea";
 import QueryResultsTab from "./components/QueryResultsTab";
 import Home from "./components/home/Home";
 import About from "./components/about/About";
+import News from "./components/news/News";
 import PlanetInfo from "./components/planetinfo/PlanetInfo";
 import { lightTheme, darkTheme } from "./theme";
 import { dataApi } from "./api";
@@ -145,7 +146,7 @@ function App() {
   const handleRowClick = (rowData) => {
     setPreviousTab(selectedTab);
     setPlanetInfoData(rowData);
-    setSelectedTab(4); // Hidden tab index
+    setSelectedTab(5); // Hidden tab index
   };
 
   const handleBackFromPlanetInfo = () => {
@@ -164,6 +165,7 @@ function App() {
               <Tab label="Home" />
               <Tab label="Data Explorer" />
               <Tab label="Predict" />
+              <Tab label="News" />
               <Tab label="About" />
             </Tabs>
             <IconButton onClick={toggleDarkMode} color="primary">
@@ -230,14 +232,18 @@ function App() {
           )}
 
           {selectedTab === 3 && (
-            <About />
+            <News />
           )}
 
           {selectedTab === 4 && (
-            <PlanetInfo planetData={planetInfoData} onBack={handleBackFromPlanetInfo} />
+            <About />
           )}
 
           {selectedTab === 5 && (
+            <PlanetInfo planetData={planetInfoData} onBack={handleBackFromPlanetInfo} />
+          )}
+
+          {selectedTab === 6 && (
             <PlanetInfo planetData={planetInfoData} onBack={handleBackFromPlanetInfo} />
           )}
           
