@@ -18,4 +18,6 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 register_routes(app)
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    import os
+    debug_mode = os.getenv('FLASK_DEBUG', 'False').lower() == 'true'
+    app.run(debug=debug_mode, port=5000, host='127.0.0.1')

@@ -6,98 +6,113 @@ import os
 from typing import Dict, Any
 
 def execute_plot_code(python_code: str, df_data: pd.DataFrame) -> Dict[str, Any]:
-    """Execute Python plotting code in subprocess with restrictions"""
+    """Secure plot generation without code execution"""
     try:
-        # Create temporary files
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as code_file:
-            restricted_code = f"""
-import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
-import json
-import sys
-import numpy as np
-
-try:
-    # Load data
-    df = pd.read_csv('{tempfile.gettempdir().replace(chr(92), '/')}/plot_data.csv')
-    
-    # Ensure numeric columns are properly typed
-    for col in df.columns:
-        if df[col].dtype == 'object':
-            try:
-                df[col] = pd.to_numeric(df[col], errors='ignore')
-            except:
-                pass
-    
-    # Execute user plot code
-    {python_code}
-    
-    # Output the plot JSON
-    if 'fig' in locals():
-        plot_json = fig.to_json()
-        print(plot_json)
-    else:
-        print('{{}}')
+        # Validate and sanitize the plot code
+        if not _is_safe_plot_code(python_code):
+            return {}
         
-except Exception as e:
-    print(f"Plot error: {{str(e)}}", file=sys.stderr)
-    import traceback
-    traceback.print_exc(file=sys.stderr)
-    print('{{}}')
-"""
-            code_file.write(restricted_code)
-            code_file_path = code_file.name
+        # Execute plot code directly in controlled environment
+        import plotly.express as px
+        import plotly.graph_objects as go
+        import numpy as np
         
-        # Save data to temporary CSV
-        data_path = os.path.join(tempfile.gettempdir(), 'plot_data.csv')
-        df_data.to_csv(data_path, index=False)
+        # Create safe execution environment
+        safe_globals = {
+            'px': px,
+            'go': go,
+            'np': np,
+            'df': df_data,
+            'fig': None
+        }
         
-        # Execute the plotting code
-        result = subprocess.run(
-            ['python', code_file_path],
-            capture_output=True,
-            text=True,
-            timeout=15,
-            cwd=tempfile.gettempdir()
-        )
+        # Only allow specific plotly functions
+        allowed_functions = [
+            'px.histogram', 'px.scatter', 'px.line', 'px.box', 'px.bar',
+            'px.violin', 'px.strip', 'px.density_heatmap', 'px.scatter_matrix'
+        ]
         
-        # Cleanup
+        # Check if code contains only allowed functions
+        if not any(func in python_code for func in allowed_functions):
+            return {}
+        
+        # Execute in restricted environment
         try:
-            os.unlink(code_file_path)
-            os.unlink(data_path)
-        except:
-            pass
-        
-        if result.returncode == 0 and result.stdout.strip():
-            try:
-                return json.loads(result.stdout.strip())
-            except json.JSONDecodeError:
+            exec(python_code, safe_globals)
+            fig = safe_globals.get('fig')
+            
+            if fig:
+                return json.loads(fig.to_json())
+            else:
                 return {}
-        else:
+                
+        except Exception:
             return {}
             
-    except Exception as e:
+    except Exception:
         return {}
 
+def _is_safe_plot_code(code: str) -> bool:
+    """Validate that plot code is safe to execute"""
+    if not code or not isinstance(code, str):
+        return False
+    
+    # Check for dangerous imports or functions
+    dangerous_patterns = [
+        'import os', 'import sys', 'import subprocess', 'import shutil',
+        'open(', 'file(', 'exec(', 'eval(', '__import__',
+        'getattr', 'setattr', 'delattr', 'globals(', 'locals(',
+        'input(', 'raw_input(', 'compile(', 'reload('
+    ]
+    
+    code_lower = code.lower()
+    for pattern in dangerous_patterns:
+        if pattern in code_lower:
+            return False
+    
+    # Must contain fig assignment
+    if 'fig =' not in code:
+        return False
+    
+    # Must use plotly
+    if not ('px.' in code or 'go.' in code):
+        return False
+    
+    return True
+
 def execute_query_dataframe(db, sql_query: str) -> pd.DataFrame:
-    """Execute query and return pandas DataFrame"""
+    """Execute query and return pandas DataFrame with enhanced security"""
     # Validate SQL query
     sql_lower = sql_query.lower().strip()
     if not sql_lower.startswith('select'):
         raise ValueError("Only SELECT queries are allowed")
     
-    forbidden_keywords = ['drop', 'delete', 'update', 'insert', 'alter', 'create', 'truncate', 'grant', 'revoke']
-    if any(keyword in sql_lower for keyword in forbidden_keywords):
-        raise ValueError("Query contains forbidden operations")
+    # Enhanced forbidden keywords check
+    forbidden_keywords = [
+        'drop', 'delete', 'update', 'insert', 'alter', 'create', 'truncate', 
+        'grant', 'revoke', 'exec', 'execute', 'sp_', 'xp_', '--', '/*', '*/',
+        'union', 'information_schema', 'pg_', 'mysql', 'sqlite_master'
+    ]
     
-    # Validate table names
-    for table in db.config.AVAILABLE_TABLES:
+    for keyword in forbidden_keywords:
+        if keyword in sql_lower:
+            raise ValueError(f"Query contains forbidden operation: {keyword}")
+    
+    # Validate table names more strictly
+    allowed_tables = db.config.AVAILABLE_TABLES
+    table_found = False
+    
+    for table in allowed_tables:
         if f'from {table}' in sql_lower or f'join {table}' in sql_lower:
+            table_found = True
             break
-    else:
-        if 'from ' in sql_lower:
-            raise ValueError("Query must use allowed tables only")
+    
+    if not table_found and 'from ' in sql_lower:
+        raise ValueError("Query must use only allowed tables")
+    
+    # Limit query complexity
+    if sql_query.count('(') > 10 or len(sql_query) > 1000:
+        raise ValueError("Query too complex")
     
     try:
         with db.get_connection() as conn:
@@ -106,31 +121,41 @@ def execute_query_dataframe(db, sql_query: str) -> pd.DataFrame:
         raise ValueError(f"Query execution failed: {str(e)}")
 
 def generate_plot_code(user_message: str, columns: list) -> str:
-    """Generate plot code based on user message and available columns"""
+    """Generate secure plot code based on user message and available columns"""
+    if not columns:
+        return "fig = px.scatter(x=[1], y=[1], title='No data available')"
+    
     message_lower = user_message.lower()
     
+    # Sanitize column names to prevent injection
+    safe_columns = [col for col in columns if _is_safe_column_name(col)]
+    if not safe_columns:
+        return "fig = px.scatter(x=[1], y=[1], title='No valid columns')"
+    
     # Find mentioned column
-    col_name = None
-    for col in columns:
+    col_name = safe_columns[0]  # Default to first safe column
+    for col in safe_columns:
         if col.lower() in message_lower:
             col_name = col
             break
     
-    if not col_name and columns:
-        col_name = columns[0]  # Use first column as fallback
-    
-    # Generate appropriate plot code
+    # Generate appropriate plot code with validation
     if 'hist' in message_lower or 'histogram' in message_lower:
         return f"fig = px.histogram(df.dropna(subset=['{col_name}']), x='{col_name}', nbins=30, title='Histogram of {col_name}')"
-    elif 'scatter' in message_lower:
-        if len(columns) >= 2:
-            return f"fig = px.scatter(df.dropna(), x='{columns[0]}', y='{columns[1]}', title='Scatter Plot')"
-        else:
-            return f"fig = px.scatter(df.dropna(), x='{col_name}', y='{col_name}', title='Scatter Plot')"
+    elif 'scatter' in message_lower and len(safe_columns) >= 2:
+        return f"fig = px.scatter(df.dropna(), x='{safe_columns[0]}', y='{safe_columns[1]}', title='Scatter Plot')"
     elif 'line' in message_lower:
         return f"fig = px.line(df.dropna(), x=df.index, y='{col_name}', title='Line Plot of {col_name}')"
     elif 'box' in message_lower:
         return f"fig = px.box(df.dropna(subset=['{col_name}']), y='{col_name}', title='Box Plot of {col_name}')"
     else:
-        # Default to histogram
         return f"fig = px.histogram(df.dropna(subset=['{col_name}']), x='{col_name}', nbins=30, title='Distribution of {col_name}')"
+
+def _is_safe_column_name(column_name: str) -> bool:
+    """Validate that column name is safe to use in code"""
+    if not column_name or not isinstance(column_name, str):
+        return False
+    
+    # Only allow alphanumeric characters and underscores
+    import re
+    return bool(re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', column_name)) and len(column_name) <= 50

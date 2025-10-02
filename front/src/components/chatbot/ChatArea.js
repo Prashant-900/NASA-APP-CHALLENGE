@@ -7,6 +7,7 @@ import { addMessage, updateMessage, addQueryResponse, getNextMessageId } from '.
 import { useChatMessages } from '../../hooks';
 import MarkdownRenderer from '../common/MarkdownRenderer';
 import { TABLE_NAMES, TABLE_LABELS } from '../../constants';
+import { sanitizeInput, validateTableName } from '../../utils/sanitize';
 
 const ChatArea = forwardRef(({ isOpen, onClose, currentTable, onOpenNewTab, scrollToQuery }, ref) => {
   const messages = useChatMessages();
@@ -21,47 +22,65 @@ const ChatArea = forwardRef(({ isOpen, onClose, currentTable, onOpenNewTab, scro
   useImperativeHandle(ref, () => ({ scrollToMessage }), [scrollToMessage]);
 
   const handleSendMessage = async () => {
-    if (inputMessage.trim()) {
-      const userMessage = { id: getNextMessageId(), text: inputMessage, sender: 'user' };
-      addMessage(userMessage);
-      const currentInput = inputMessage;
-      setInputMessage('');
-      
-      // Create initial bot message
-      const botMessageId = getNextMessageId();
-      const botMessage = { 
-        id: botMessageId, 
-        text: '', 
-        sender: 'bot',
-        streaming: true
-      };
-      addMessage(botMessage);
-      
-      // Stream response
-      let fullResponse = '';
-      await chatApi.sendMessageStream(currentInput, selectedTable, botMessageId, (chunk) => {
-        if (chunk.chunk) {
-          fullResponse += chunk.chunk;
-          updateMessage(botMessageId, { text: fullResponse, streaming: !chunk.done, data: chunk.data });
+    const trimmedMessage = inputMessage.trim();
+    if (trimmedMessage) {
+      try {
+        // Sanitize and validate inputs
+        const sanitizedMessage = sanitizeInput(trimmedMessage, 1000);
+        const validTable = validateTableName(selectedTable);
+        
+        if (!sanitizedMessage) {
+          console.error('Invalid message input');
+          return;
         }
         
-        if (chunk.done && chunk.open_new_tab && chunk.data) {
-          console.log('Received data for query:', chunk.data);
-          const queryId = addQueryResponse({
-            response: fullResponse,
-            data: chunk.data,
-            plot: chunk.plot,
-            table: selectedTable,
-            messageId: botMessageId
-          });
-          updateMessage(botMessageId, { queryId });
-          onOpenNewTab?.(chunk.data, selectedTable, fullResponse);
+        if (!validTable) {
+          console.error('Invalid table selection');
+          return;
         }
         
-        if (chunk.error) {
-          updateMessage(botMessageId, { text: `Error: ${chunk.error}`, streaming: false });
-        }
-      });
+        const userMessage = { id: getNextMessageId(), text: sanitizedMessage, sender: 'user' };
+        addMessage(userMessage);
+        setInputMessage('');
+        
+        // Create initial bot message
+        const botMessageId = getNextMessageId();
+        const botMessage = { 
+          id: botMessageId, 
+          text: '', 
+          sender: 'bot',
+          streaming: true
+        };
+        addMessage(botMessage);
+        
+        // Stream response
+        let fullResponse = '';
+        await chatApi.sendMessageStream(sanitizedMessage, validTable, botMessageId, (chunk) => {
+          if (chunk.chunk) {
+            fullResponse += chunk.chunk;
+            updateMessage(botMessageId, { text: fullResponse, streaming: !chunk.done, data: chunk.data });
+          }
+          
+          if (chunk.done && chunk.open_new_tab && chunk.data) {
+            console.log('Received data for query:', chunk.data);
+            const queryId = addQueryResponse({
+              response: fullResponse,
+              data: chunk.data,
+              plot: chunk.plot,
+              table: validTable,
+              messageId: botMessageId
+            });
+            updateMessage(botMessageId, { queryId });
+            onOpenNewTab?.(chunk.data, validTable, fullResponse);
+          }
+          
+          if (chunk.error) {
+            updateMessage(botMessageId, { text: `Error: ${chunk.error}`, streaming: false });
+          }
+        });
+      } catch (error) {
+        console.error('Message send error:', error);
+      }
     }
   };
 
@@ -169,7 +188,12 @@ const ChatArea = forwardRef(({ isOpen, onClose, currentTable, onOpenNewTab, scro
             <Select
               value={selectedTable}
               label="Research Dataset"
-              onChange={(e) => setSelectedTable(e.target.value)}
+              onChange={(e) => {
+              const validTable = validateTableName(e.target.value);
+              if (validTable) {
+                setSelectedTable(validTable);
+              }
+            }}
             >
               <MenuItem value={TABLE_NAMES.K2}>{TABLE_LABELS[TABLE_NAMES.K2]}</MenuItem>
               <MenuItem value={TABLE_NAMES.TOI}>{TABLE_LABELS[TABLE_NAMES.TOI]}</MenuItem>
@@ -183,7 +207,9 @@ const ChatArea = forwardRef(({ isOpen, onClose, currentTable, onOpenNewTab, scro
             size="small"
             placeholder="Ask about the research data..."
             value={inputMessage}
-            onChange={(e) => setInputMessage(e.target.value)}
+            onChange={(e) => {
+              setInputMessage(e.target.value.substring(0, 1000));
+            }}
             onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
           />
           <IconButton onClick={handleSendMessage} color="primary">

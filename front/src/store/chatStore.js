@@ -15,7 +15,12 @@ export const addMessage = (message) => {
 export const updateMessage = (id, updates) => {
   const index = chatStore.messages.findIndex(msg => msg.id === id);
   if (index !== -1) {
-    chatStore.messages[index] = { ...chatStore.messages[index], ...updates };
+    // Create a new array to ensure React detects the change
+    chatStore.messages = [
+      ...chatStore.messages.slice(0, index),
+      { ...chatStore.messages[index], ...updates },
+      ...chatStore.messages.slice(index + 1)
+    ];
     notifyListeners();
   }
 };
@@ -46,5 +51,14 @@ export const subscribe = (listener) => {
 };
 
 const notifyListeners = () => {
-  chatStore.listeners.forEach(listener => listener());
+  // Use setTimeout to ensure state updates are batched properly
+  setTimeout(() => {
+    chatStore.listeners.forEach(listener => {
+      try {
+        listener();
+      } catch (error) {
+        console.error('Error in chat store listener:', error);
+      }
+    });
+  }, 0);
 };

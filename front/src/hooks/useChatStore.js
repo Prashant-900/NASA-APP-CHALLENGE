@@ -2,13 +2,13 @@ import { useState, useEffect } from 'react';
 import { getMessages, getQueryResponses, subscribe } from '../store/chatStore';
 
 export const useChatMessages = () => {
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState(() => getMessages());
 
   useEffect(() => {
     const unsubscribe = subscribe(() => {
-      setMessages(getMessages());
+      // Force a new array reference to trigger re-render
+      setMessages([...getMessages()]);
     });
-    setMessages(getMessages());
     return unsubscribe;
   }, []);
 
@@ -16,13 +16,13 @@ export const useChatMessages = () => {
 };
 
 export const useQueryResponses = () => {
-  const [responses, setResponses] = useState([]);
+  const [responses, setResponses] = useState(() => getQueryResponses());
 
   useEffect(() => {
     const unsubscribe = subscribe(() => {
-      setResponses(getQueryResponses());
+      // Force a new array reference to trigger re-render
+      setResponses([...getQueryResponses()]);
     });
-    setResponses(getQueryResponses());
     return unsubscribe;
   }, []);
 

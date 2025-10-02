@@ -32,6 +32,7 @@ import StarfieldBackground from "./components/common/StarfieldBackground";
 import { lightTheme, darkTheme } from "./theme";
 import { dataApi } from "./api";
 import { TABLE_NAMES } from "./constants";
+import { sanitizeInput, validateTableName } from "./utils/sanitize";
 
 function App() {
   const [selectedTab, setSelectedTab] = useState(0);
@@ -108,10 +109,14 @@ function App() {
   const handleTabChange = (event, newValue) => setSelectedTab(newValue);
 
   const handleTableSubTabChange = (event, newValue) => {
+    const sanitizedValue = sanitizeInput(newValue, 50);
+    const newTable = sanitizedValue.startsWith("table-") ? sanitizedValue.replace("table-", "") : selectedTable;
+    const validTable = validateTableName(newTable) || selectedTable;
+    
     updateTabState(1, {
-      dataExplorerTab: newValue,
-      selectedTable: newValue.startsWith("table-") ? newValue.replace("table-", "") : selectedTable,
-      searchTerm: newValue.startsWith("table-") ? "" : searchTerm
+      dataExplorerTab: sanitizedValue,
+      selectedTable: validTable,
+      searchTerm: sanitizedValue.startsWith("table-") ? "" : searchTerm
     });
   };
 
@@ -198,7 +203,7 @@ function App() {
                 <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
                   {dataExplorerTab.startsWith("table-") && (
                     <>
-                      <TextField label="Search" variant="outlined" size="small" value={searchTerm || ""} onChange={(e) => updateTabState(1, { searchTerm: e.target.value })} sx={{ minWidth: 200 }} />
+                      <TextField label="Search" variant="outlined" size="small" value={searchTerm || ""} onChange={(e) => updateTabState(1, { searchTerm: sanitizeInput(e.target.value, 200) })} sx={{ minWidth: 200 }} />
                       <FormControl size="small" sx={{ minWidth: 150 }}>
                         <InputLabel>Search Column</InputLabel>
                         <Select value={searchColumn || ""} label="Search Column" onChange={(e) => updateTabState(1, { searchColumn: e.target.value })}>
