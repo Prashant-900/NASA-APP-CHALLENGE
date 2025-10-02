@@ -76,8 +76,17 @@ function Planet3D({ planetData }) {
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     const mount = mountRef.current;
     renderer.setSize(mount.clientWidth, mount.clientHeight);
-    renderer.domElement.style.display = 'block';
-    mount.appendChild(renderer.domElement);
+    
+    // Remove all margins and gaps from canvas
+    const canvas = renderer.domElement;
+    canvas.style.display = 'block';
+    canvas.style.margin = '0';
+    canvas.style.padding = '0';
+    canvas.style.border = 'none';
+    canvas.style.outline = 'none';
+    canvas.style.verticalAlign = 'top';
+    
+    mount.appendChild(canvas);
 
     const ambientLight = new THREE.AmbientLight(0x404040, 0.4);
     scene.add(ambientLight);
@@ -239,7 +248,22 @@ function Planet3D({ planetData }) {
     };
   }, [planetData]);
 
-  return <div ref={mountRef} style={{ width: "100%", height: "100%", margin: 0, padding: 0, display: "block" }} />;
+  return (
+    <div 
+      ref={mountRef} 
+      style={{ 
+        width: "100%", 
+        height: "100%", 
+        margin: 0, 
+        padding: 0, 
+        display: "block",
+        border: "none",
+        outline: "none",
+        overflow: "hidden",
+        lineHeight: 0
+      }} 
+    />
+  );
 }
 
 export default Planet3D;
