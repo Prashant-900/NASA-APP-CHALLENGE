@@ -32,24 +32,27 @@ function Planet3D({ planetData }) {
       else if (planetData.kepler_name !== undefined) datasetType = 'cum';
     }
 
-    let planetRadius, planetWeight, planetName;
+    let planetRadius, planetWeight, planetName, planetDistance;
     
     if (isPredictionData) {
       // For prediction data, use the input features based on dataset type
       const mapping = PLANET_FEATURE_MAPPING[datasetType] || PLANET_FEATURE_MAPPING.k2;
       planetRadius = planetData[mapping.radius] || planetData.pl_rade || 1;
       planetWeight = mapping.weight ? planetData[mapping.weight] : null;
+      planetDistance = mapping.distance ? planetData[mapping.distance] : null;
       planetName = `Predicted ${planetData.prediction ? 'Exoplanet' : 'Non-Exoplanet'}`;
     } else if (datasetType && PLANET_FEATURE_MAPPING[datasetType]) {
       // For actual dataset, use the mapping
       const mapping = PLANET_FEATURE_MAPPING[datasetType];
       planetRadius = planetData[mapping.radius] || null;
       planetWeight = mapping.weight ? planetData[mapping.weight] : null;
+      planetDistance = mapping.distance ? planetData[mapping.distance] : null;
       planetName = planetData[mapping.name] || null;
     } else {
       // Fallback
       planetRadius = 1;
       planetWeight = null;
+      planetDistance = null;
       planetName = 'Unknown Planet';
     }
 
@@ -73,6 +76,7 @@ function Planet3D({ planetData }) {
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     const mount = mountRef.current;
     renderer.setSize(mount.clientWidth, mount.clientHeight);
+    renderer.domElement.style.display = 'block';
     mount.appendChild(renderer.domElement);
 
     const ambientLight = new THREE.AmbientLight(0x404040, 0.4);
@@ -150,14 +154,64 @@ function Planet3D({ planetData }) {
       scene.add(radiusLabel);
     };
 
-    // Calculate positions to ensure minimum distance
+    // Calculate positions to ensure minimum distance with extra space for text
     const displayRadius = planetRadius || 1;
-    const minDistance = earthRadius + displayRadius + 2; // 2 units minimum gap
+    const minDistance = earthRadius + displayRadius + 4; // 4 units minimum gap for text clearance
     const earthPos = -minDistance / 2;
     const planetPos = minDistance / 2;
     
     addPlanet(earthRadius, earthWeight, earthName, earthTexture, earthPos);
     addPlanet(displayRadius, planetWeight, planetName, exoplanetTexture, planetPos);
+
+    // Add distance line between Earth and exoplanet
+    const distanceGeometry = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(earthPos, 0, 0),
+      new THREE.Vector3(planetPos, 0, 0)
+    ]);
+    const distanceMaterial = new THREE.LineDashedMaterial({
+      color: 0x00ff00,
+      dashSize: 0.3,
+      gapSize: 0.2
+    });
+    const distanceLine = new THREE.Line(distanceGeometry, distanceMaterial);
+    distanceLine.computeLineDistances();
+    scene.add(distanceLine);
+
+    // Add distance label in parsecs
+    if (planetDistance) {
+      const distanceLabel = createTextSprite(
+        `${planetDistance} pc`, 
+        new THREE.Vector3((earthPos + planetPos) / 2, -1, 0)
+      );
+      scene.add(distanceLabel);
+    }
+
+    // Create fixed info labels that stick to screen position
+    const createFixedLabel = (text, x, y) => {
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      canvas.width = 400;
+      canvas.height = 40;
+      ctx.fillStyle = "white";
+      ctx.font = "20px Arial";
+      ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
+      ctx.fillText(text, 10, canvas.height / 2);
+      
+      const texture = new THREE.CanvasTexture(canvas);
+      const material = new THREE.SpriteMaterial({ map: texture, transparent: true });
+      const sprite = new THREE.Sprite(material);
+      
+      // Position relative to camera for fixed screen position
+      sprite.position.set(x, y, -5);
+      sprite.scale.set(3, 0.3, 1);
+      camera.add(sprite); // Add to camera so it moves with view
+      return sprite;
+    };
+
+    // Add fixed info labels at top right
+    createFixedLabel("Distance: Earth to Host Star", 2.5, 1.8);
+    createFixedLabel("Exoplanet texture: Random", 2.5, 1.5);
 
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
@@ -185,7 +239,7 @@ function Planet3D({ planetData }) {
     };
   }, [planetData]);
 
-  return <div ref={mountRef} style={{ width: "100%", height: "100%" }} />;
+  return <div ref={mountRef} style={{ width: "100%", height: "100%", margin: 0, padding: 0, display: "block" }} />;
 }
 
 export default Planet3D;

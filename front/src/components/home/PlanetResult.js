@@ -111,7 +111,8 @@ const PlanetResult = ({ result, isVisible, onClose }) => {
                     height: '100%', 
                     borderLeft: { md: '1px solid' }, 
                     borderColor: 'grey.300',
-                    borderTop: { xs: '1px solid', md: 'none' }
+                    borderTop: { xs: '1px solid', md: 'none' },
+                    overflow: 'hidden'
                   }}>
                     <Planet3D planetData={result.data} />
                   </Box>

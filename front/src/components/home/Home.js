@@ -205,26 +205,44 @@ function Home() {
           position: "relative",
           zIndex: 1,
           display: "flex",
+          alignItems: "center",
+          justifyContent: showResult ? "flex-start" : "center",
         }}
       >
-        <Box
-          sx={{
-            width: "40%",
-            pr: 3,
+        <motion.div
+          animate={{
+            width: showResult ? "40%" : "60%",
+            x: showResult ? 0 : 0
+          }}
+          transition={{ duration: 0.5, ease: "easeInOut" }}
+          style={{
             display: "flex",
             flexDirection: "column",
             justifyContent: "center",
+            paddingRight: showResult ? "24px" : "0"
           }}
         >
           <Typography
             variant="h3"
             gutterBottom
-            sx={{ color: "primary.main", mb: 4, fontWeight: "bold" }}
+            sx={{ 
+              color: "primary.main", 
+              mb: 4, 
+              fontWeight: "bold",
+              textAlign: showResult ? "left" : "center"
+            }}
           >
             Exoplanet Discovery
           </Typography>
 
-          <Typography variant="h6" sx={{ mb: 4, color: "text.secondary" }}>
+          <Typography 
+            variant="h6" 
+            sx={{ 
+              mb: 4, 
+              color: "text.secondary",
+              textAlign: showResult ? "left" : "center"
+            }}
+          >
             Search and explore planets across K2, TOI, and CUM datasets
           </Typography>
 
@@ -254,19 +272,25 @@ function Home() {
               )}
             </Button>
           </Box>
-        </Box>
+        </motion.div>
 
-        <Box
-          sx={{
-            width: "60%",
-            pl: 3,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <PlanetResult result={result} isVisible={showResult} onClose={handleCloseResult} />
-        </Box>
+        {showResult && (
+          <motion.div
+            initial={{ opacity: 0, x: 50 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 50 }}
+            transition={{ duration: 0.5, ease: "easeInOut" }}
+            style={{
+              width: "60%",
+              paddingLeft: "24px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <PlanetResult result={result} isVisible={showResult} onClose={handleCloseResult} />
+          </motion.div>
+        )}
       </Box>
 
       <Page2 />
