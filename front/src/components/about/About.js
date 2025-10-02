@@ -7,8 +7,8 @@ const About = () => {
   const theme = useTheme();
   
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-            {/* Background */}
+    <Box sx={{ position: 'relative', minHeight: '100vh' }}>
+      {/* Background */}
       <Box
         sx={{
           position: "fixed",
@@ -16,12 +16,14 @@ const About = () => {
           left: 0,
           width: "100%",
           height: "100%",
-          zIndex: 1,
+          zIndex: 0,
           pointerEvents: "none",
         }}
       >
         <StarfieldBackground />
       </Box>
+      
+    <Container maxWidth="lg" sx={{ py: 4, position: 'relative', zIndex: 1 }}>
       <Box sx={{ textAlign: 'center', mb: 4 }}>
         <Typography variant="h3" component="h1" gutterBottom sx={{ color: 'text.primary', fontWeight: 'bold' }}>
           About Exoplanet Detection
@@ -84,6 +86,7 @@ const About = () => {
         </Box>
       </Paper>
     </Container>
+    </Box>
   );
 };
 

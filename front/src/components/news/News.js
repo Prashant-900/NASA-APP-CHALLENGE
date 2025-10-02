@@ -30,7 +30,9 @@ const News = () => {
       setLoading(true);
       setError(null);
       const data = await newsApi.getArticles(12);
-      setArticles(data.results);
+      // Shuffle articles for more randomness
+      const shuffled = data.results.sort(() => Math.random() - 0.5);
+      setArticles(shuffled);
     } catch (err) {
       setError('Failed to fetch space news. Please try again.');
     } finally {
@@ -97,7 +99,15 @@ const News = () => {
           variant="outlined"
           startIcon={<Refresh />}
           onClick={fetchNews}
-          sx={{ borderRadius: 2 }}
+          sx={{ 
+            borderRadius: 2,
+            color: 'primary.main',
+            borderColor: 'primary.main',
+            '&:hover': {
+              backgroundColor: 'primary.main',
+              color: 'white'
+            }
+          }}
         >
           Refresh News
         </Button>

@@ -53,8 +53,11 @@ const NewsDialog = ({ article, open, onClose }) => {
             label={article.news_site}
             sx={{
               backgroundColor: 'primary.main',
-              color: 'white',
-              fontWeight: 500
+              color: 'primary.contrastText',
+              fontWeight: 500,
+              '& .MuiChip-label': {
+                color: 'primary.contrastText'
+              }
             }}
           />
           <Typography variant="body2" color="text.secondary">
@@ -87,11 +90,14 @@ const NewsDialog = ({ article, open, onClose }) => {
             startIcon={<OpenInNew />}
             onClick={() => window.open(article.url, '_blank')}
             sx={{
-              background: 'linear-gradient(45deg, #1976d2 30%, #9c27b0 90%)',
-              color: 'white',
+              backgroundColor: 'primary.main',
+              color: 'primary.contrastText',
               fontWeight: 600,
               px: 3,
-              py: 1
+              py: 1,
+              '&:hover': {
+                backgroundColor: 'primary.dark'
+              }
             }}
           >
             Read Full Article

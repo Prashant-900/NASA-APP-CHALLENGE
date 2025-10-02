@@ -83,8 +83,11 @@ const NewsCard = ({ article, onClick }) => {
               size="small"
               sx={{
                 backgroundColor: 'primary.main',
-                color: 'white',
-                fontWeight: 500
+                color: 'primary.contrastText',
+                fontWeight: 500,
+                '& .MuiChip-label': {
+                  color: 'primary.contrastText'
+                }
               }}
             />
             <Typography variant="caption" color="text.secondary">

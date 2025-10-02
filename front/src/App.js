@@ -28,6 +28,7 @@ import Home from "./components/home/Home";
 import About from "./components/about/About";
 import News from "./components/news/News";
 import PlanetInfo from "./components/planetinfo/PlanetInfo";
+import StarfieldBackground from "./components/common/StarfieldBackground";
 import { lightTheme, darkTheme } from "./theme";
 import { dataApi } from "./api";
 import { TABLE_NAMES } from "./constants";
@@ -232,11 +233,23 @@ function App() {
           )}
 
           {selectedTab === 3 && (
-            <News />
+            <Box sx={{ position: 'relative', flex: 1, overflow: 'hidden' }}>
+              <Box sx={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 1 }}>
+                <StarfieldBackground />
+              </Box>
+              <Box sx={{ position: 'relative', zIndex: 1, height: '100%', overflow: 'auto' }}>
+                <News />
+              </Box>
+            </Box>
           )}
 
           {selectedTab === 4 && (
-            <About />
+            <Box sx={{ position: 'relative', flex: 1, overflow: 'hidden' }}>
+              <StarfieldBackground />
+              <Box sx={{ position: 'relative', zIndex: 2, height: '100%', overflow: 'auto' }}>
+                <About />
+              </Box>
+            </Box>
           )}
 
           {selectedTab === 5 && (
