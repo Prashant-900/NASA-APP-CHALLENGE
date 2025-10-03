@@ -79,7 +79,11 @@ def predict(df):
             label_map = {0: 'FALSE POSITIVE', 1: 'CANDIDATE', 2: 'CONFIRMED'}
             pred_labels = [label_map.get(int(p), 'UNKNOWN') for p in predictions]
         
-        return pred_labels
+        # Build result DataFrame with predicted_class column
+        df_output = df.copy()
+        df_output["predicted_class"] = pred_labels
+        
+        return df_output
         
     except Exception as e:
         return f"Kepler prediction failed: {str(e)}"

@@ -98,22 +98,35 @@ def preprocess(df):
     return X_top33
 
 def predict(df):
-    """Make predictions using TOI model"""
+    """Make predictions using TOI model (with probabilities)"""
     try:
         # Preprocess data
         processed_data = preprocess(df)
-        
+
         # Check if preprocessing returned an error
         if isinstance(processed_data, str):
             return processed_data
-        
+
         # Make predictions
         predictions = model.predict(processed_data)
-        
+        prediction_proba = model.predict_proba(processed_data)
+
         # Convert predictions to string labels
         pred_labels = label_encoder.inverse_transform(predictions.astype(int))
-        
-        return pred_labels
-        
+
+        # Confidence = highest probability per sample
+        pred_confidence = np.max(prediction_proba, axis=1)
+
+        # Build result DataFrame
+        df_output = df.copy()
+        df_output["predicted_class"] = pred_labels
+        df_output["confidence"] = pred_confidence
+
+        # Add probability columns for each class
+        for i, class_name in enumerate(label_encoder.classes_):
+            df_output[f"prob_{class_name}"] = prediction_proba[:, i]
+
+        return df_output
+
     except Exception as e:
         return f"TOI prediction failed: {str(e)}"

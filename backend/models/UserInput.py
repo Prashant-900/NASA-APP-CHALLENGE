@@ -1,104 +1,139 @@
 import pandas as pd
 import numpy as np
 import pickle
+import xgboost as xgb
 import os
-
-# -------------------------------
-# Paths
-# -------------------------------
+import warnings
+warnings.filterwarnings('ignore')
 script_dir = os.path.dirname(os.path.abspath(__file__))
-# -------------------------------
-# Load preprocessing objects
-# -------------------------------
-with open(os.path.join(script_dir, "toi_preprocess.pkl"), "rb") as f:
-    objs = pickle.load(f)
+csv_input_path = os.path.join(script_dir, "K2_user_input.csv")
+csv_output_path = os.path.join(script_dir, "k2_user_predictions.csv")
+try:
+    with open(os.path.join(script_dir, "k2_preprocess.pkl"), "rb") as f:
+        preprocess_objs = pickle.load(f)
+    
+    imputer = preprocess_objs["imputer"]
+    scaler = preprocess_objs["scaler"]
+    label_encoder = preprocess_objs["label_encoder"]
+    feature_names = preprocess_objs["feature_names"]
+    print(feature_names)
+    categorical_encoders = preprocess_objs.get("categorical_encoders", {})
+    outlier_stats = preprocess_objs["outlier_stats"]
+    
+    # Preprocessing model loaded
+    
+except FileNotFoundError:
+    raise FileNotFoundError("K2_Preprocessing_Model.pkl not found. Please run 'K2_preprocessing_model_creator.py' first")
+try:
+    with open(os.path.join(script_dir, "xgboost_classweight_model.pkl"), "rb") as f:
+        model = pickle.load(f)
+    # Model loaded successfully
+except FileNotFoundError:
+    raise FileNotFoundError("xgboost_classweight_model.pkl not found. Please run 'Train.py' first to train the model")
+def load_csv_smart(filepath):
+    """
+    Smart CSV loader that handles:
+    - Comma-separated files
+    - Tab-separated files
+    - Comments (lines starting with #)
+    """
+    with open(filepath, 'r') as f:
+        first_line = f.readline()
+        while first_line.startswith('#'):
+            first_line = f.readline()
+    comma_count = first_line.count(',')
+    tab_count = first_line.count('\t')
+    if tab_count > comma_count:
+        sep = '\t'
+    else:
+        sep = ','
+    df = pd.read_csv(filepath, sep=sep, comment="#", on_bad_lines="skip", engine="python")
+    return df
+def preprocess_user_csv(df_raw):
+    """
+    Preprocesses user input CSV following the same pipeline as training
+    
+    Steps:
+    1. Check column overlap (minimum 10 features required)
+    2. Keep only numeric features that match expected features
+    3. Handle missing columns (fill with NaN)
+    4. Apply categorical encoding (if applicable)
+    5. Apply outlier clipping
+    6. Impute missing values
+    7. Ensure correct column order
+    8. Scale features
+    9. Return processed data ready for prediction
+    """
+    
+    
+    overlap_cols = [c for c in df_raw.columns if c in feature_names]
+    if len(overlap_cols) > 0:
+        pass
 
-imputer = objs["imputer"]
-scaler = objs["scaler"]
-label_encoder = objs["label_encoder"]
-feature_names = objs["feature_names"]  # TOP-33 features
-print(feature_names)
-# -------------------------------
-# Load trained TESS model
-# -------------------------------
-with open(os.path.join(script_dir, "toi.pkl"), "rb") as f:
-    model = pickle.load(f)
+    if len(overlap_cols) < 10:
+        raise ValueError(f"Need at least 10 overlapping features, found {len(overlap_cols)}")
 
-# -------------------------------
-# Preprocess CSV
-# -------------------------------
-def preprocess_csv(df):
-    # Check overlap with imputer features
-    overlap = [c for c in df.columns if c in imputer.feature_names_in_]
-    if len(overlap) < 10:
-        raise ValueError(f"Input CSV does not have enough valid TESS features (found only {len(overlap)}).")
+    df = df_raw[overlap_cols].copy()
 
-    # Drop admin columns if present
-    admin_cols = ["toi", "tid", "rastr", "decstr", "rowupdate", "toi_created",
-                  "tfopwg_disp", "tfopwg_d"]
-    df = df.drop(columns=[c for c in admin_cols if c in df.columns], errors="ignore")
+    for col in df.columns:
+        df[col] = pd.to_numeric(df[col], errors='coerce')
 
-    # Numeric columns
-    num_cols = df.select_dtypes(include=[np.number]).columns.tolist()
-
-    # Feature engineering (SNR, ratios, absolute magnitude)
-    error_pairs = [
-        ('pl_orbper', 'pl_orbpererr1'), ('pl_tranmid', 'pl_tranmiderr1'),
-        ('pl_trandur', 'pl_trandurerr1'), ('pl_trandep', 'pl_trandeperr1'),
-        ('pl_rade', 'pl_radeerr1'), ('st_teff', 'st_tefferr1'),
-        ('st_rad', 'st_raderr1'), ('st_logg', 'st_loggerr1')
-    ]
-    for val_col, err_col in error_pairs:
-        if val_col in df.columns and err_col in df.columns:
-            new_col = f'{val_col}_snr'
-            df[new_col] = df[val_col] / (df[err_col] + 1e-10)
-            if new_col not in num_cols:
-                num_cols.append(new_col)
-
-    if 'pl_rade' in df.columns and 'st_rad' in df.columns:
-        df['planet_star_radius_ratio'] = df['pl_rade'] / (df['st_rad'] * 109.2)
-        num_cols.append('planet_star_radius_ratio')
-
-    if 'pl_trandep' in df.columns and 'st_tmag' in df.columns:
-        df['depth_mag_ratio'] = df['pl_trandep'] * df['st_tmag']
-        num_cols.append('depth_mag_ratio')
-
-    if 'st_dist' in df.columns and 'st_tmag' in df.columns:
-        df['absolute_mag'] = df['st_tmag'] - 5 * np.log10(df['st_dist'] / 10)
-        num_cols.append('absolute_mag')
-
-    # Outlier handling
-    num_cols_present = [c for c in num_cols if c in df.columns]
-    for col in num_cols_present:
-        Q1, Q3 = df[col].quantile(0.01), df[col].quantile(0.99)
-        IQR = Q3 - Q1
-        df[col] = df[col].clip(lower=Q1 - 3*IQR, upper=Q3 + 3*IQR)
-
-    # Impute missing values
-    imputer_features = imputer.feature_names_in_.tolist()
-    for col in imputer_features:
-        if col not in df.columns:
+    missing_cols = [col for col in feature_names if col not in df.columns]
+    if missing_cols:
+        for col in missing_cols:
             df[col] = np.nan
-    df_for_imputation = df[imputer_features].replace({pd.NA: np.nan})
-    df_imputed = pd.DataFrame(imputer.transform(df_for_imputation),
-                              columns=imputer_features,
-                              index=df.index)
-    for col in imputer_features:
-        df[col] = df_imputed[col]
 
-    # Scale features
-    scaler_features = scaler.feature_names_in_.tolist()
-    for col in scaler_features:
-        if col not in df.columns:
-            df[col] = 0
-    df_for_scaling = df[scaler_features]
-    df_scaled = scaler.transform(df_for_scaling)
+    df = df[feature_names]
 
-    # Select TOP-33
-    top_33_indices = [scaler_features.index(feat) for feat in feature_names if feat in scaler_features]
-    X_top33 = df_scaled[:, top_33_indices]
+    missing_before = df.isna().sum().sum()
 
-    return X_top33
+    df = df.replace({pd.NA: np.nan})
 
-# -------------------------------
-# Main prediction
+    for col, stats in outlier_stats.items():
+        if col in df.columns:
+            df[col] = df[col].clip(lower=stats['lower'], upper=stats['upper'])
+
+    df_array = imputer.transform(df.values)
+    df_imputed = pd.DataFrame(df_array, columns=feature_names, index=df.index)
+
+    missing_after = df_imputed.isna().sum().sum()
+
+    df_scaled_array = scaler.transform(df_imputed.values)
+
+    return df_scaled_array
+
+if not os.path.exists(csv_input_path):
+    raise FileNotFoundError(f"Input file not found: {csv_input_path}")
+
+df_input = load_csv_smart(csv_input_path)
+
+df_processed = preprocess_user_csv(df_input)
+
+try:
+    pred_encoded = model.predict(df_processed)
+    pred_proba = model.predict_proba(df_processed)
+
+    pred_labels = label_encoder.inverse_transform(pred_encoded.astype(int))
+
+    pred_confidence = np.max(pred_proba, axis=1)
+
+    class_probabilities = {}
+    for i, class_name in enumerate(label_encoder.classes_):
+        class_probabilities[f'prob_{class_name}'] = pred_proba[:, i]
+
+except Exception:
+    import traceback
+    traceback.print_exc()
+    raise
+
+df_output = df_input.copy()
+df_output["predicted_class"] = pred_labels
+df_output["confidence"] = pred_confidence
+
+for class_name in label_encoder.classes_:
+    df_output[f"prob_{class_name}"] = class_probabilities[f'prob_{class_name}']
+
+try:
+    df_output.to_csv(csv_output_path, index=False)
+except Exception:
+    raise
