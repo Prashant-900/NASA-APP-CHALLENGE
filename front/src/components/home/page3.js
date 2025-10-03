@@ -58,7 +58,7 @@ function Page3() {
           style={{
             position: 'absolute',
             left: '50%',
-            marginLeft: '-300px',
+            marginLeft: '-350px',
             zIndex: 2,
           }}
         >
@@ -67,7 +67,7 @@ function Page3() {
             src={transitGif}
             alt="Exoplanet Transit Method"
             sx={{
-              width: '600px',
+              width: '700px',
               height: 'auto',
               borderRadius: '16px',
               border: '2px solid',
@@ -85,43 +85,33 @@ function Page3() {
           style={{
             position: 'absolute',
             left: '50%',
-            marginLeft: '-300px',
+            marginLeft: '-350px',
             zIndex: 1,
+            width: '450px',
+            padding: '32px',
           }}
         >
-          <Box
+          <Typography
+            variant="h4"
             sx={{
-              background: 'rgba(0, 0, 0, 0.7)',
-              backdropFilter: 'blur(20px)',
-              borderRadius: '16px',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              p: 4,
-              width: '450px',
-              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
+              color: 'primary.main',
+              fontWeight: 600,
+              mb: 2,
+              letterSpacing: '0.5px',
             }}
           >
-            <Typography
-              variant="h4"
-              sx={{
-                color: 'primary.main',
-                fontWeight: 600,
-                mb: 2,
-                letterSpacing: '0.5px',
-              }}
-            >
-              Transit Method
-            </Typography>
-            <Typography
-              variant="body1"
-              sx={{
-                color: 'text.secondary',
-                lineHeight: 1.7,
-                fontSize: '1.05rem',
-              }}
-            >
-              Detects exoplanets by measuring the slight dimming of a star's light when a planet passes in front of it.
-            </Typography>
-          </Box>
+            Transit Method
+          </Typography>
+          <Typography
+            variant="body1"
+            sx={{
+              color: 'text.secondary',
+              lineHeight: 1.7,
+              fontSize: '1.05rem',
+            }}
+          >
+            Detects exoplanets by measuring the slight dimming of a star's light when a planet passes in front of it.
+          </Typography>
         </motion.div>
       </Box>
     </Box>
