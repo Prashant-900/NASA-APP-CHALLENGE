@@ -51,6 +51,16 @@ def predict_data():
         else:
             return jsonify({'error': f'Model type "{model_type}" not supported'}), 400
         
+        # Handle prediction result for error strings
+        if isinstance(predictions, str):  # Error message
+            os.remove(filepath)  # Clean up uploaded file
+            return jsonify({
+                'predictions': [],
+                'model_type': model_type,
+                'rows_processed': len(data),
+                'error': predictions
+            })
+        
         # Clean up uploaded file
         os.remove(filepath)
         
@@ -151,7 +161,12 @@ def predict_manual():
         
         # Handle prediction result
         if isinstance(prediction, str):  # Error message
-            return jsonify({'error': prediction}), 400
+            return jsonify({
+                'predictions': None,
+                'model_type': model_type,
+                'rows_processed': 1,
+                'error': prediction
+            })
         
         # Handle prediction result
         if hasattr(prediction, 'tolist'):

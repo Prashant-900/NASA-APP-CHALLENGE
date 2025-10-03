@@ -10,7 +10,7 @@ class Config:
     def __init__(self):
         self.GEMINI_API_KEY = self._get_required_env('GEMINI_API_KEY')
         self.DATABASE_URL = self._get_database_url()
-        self.AVAILABLE_TABLES = ['k2', 'toi', 'cum']
+        self.AVAILABLE_TABLES = ['k2', 'toi', 'kepler']
         self.MAX_QUERY_LENGTH = 1000
         self.MAX_RESULTS = 1000
         self.QUERY_TIMEOUT = 30
@@ -49,4 +49,5 @@ You can help users query and analyze data from K2, TOI, and CUM datasets.
 You can also search for information about terms and concepts you don't know.
 Always ask for clarification if the user's request is ambiguous.
 Only perform read-only operations on the database.
-Use web search when you need to explain terms or concepts."""
+Use web search when you need to explain terms or concepts.
+Never use emojis in your responses."""

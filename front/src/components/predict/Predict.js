@@ -63,7 +63,12 @@ const Predict = ({ persistentState = {}, onStateChange, onViewPlanetInfo }) => {
         }
       });
     } catch (err) {
-      updateState({ error: err.message });
+      const errorMsg = err.response?.data?.error || err.message || 'Upload failed';
+      if (err.response?.data && err.response?.data.hasOwnProperty('predictions')) {
+        updateState({ results: err.response.data });
+      } else {
+        updateState({ error: errorMsg });
+      }
     } finally {
       updateState({ loading: false });
     }
@@ -108,8 +113,12 @@ const Predict = ({ persistentState = {}, onStateChange, onViewPlanetInfo }) => {
         }
       });
     } catch (err) {
-      console.error('Manual prediction error:', err);
-      updateState({ error: err.response?.data?.error || err.message });
+      const errorMsg = err.response?.data?.error || err.message || 'Prediction failed';
+      if (err.response?.data && err.response?.data.hasOwnProperty('predictions')) {
+        updateState({ results: err.response.data });
+      } else {
+        updateState({ error: errorMsg });
+      }
     } finally {
       updateState({ loading: false });
     }
@@ -170,7 +179,7 @@ const Predict = ({ persistentState = {}, onStateChange, onViewPlanetInfo }) => {
         onPredict={(optionalFeatures) => handleManualPredict(optionalFeatures)}
       />
 
-      {error && (
+      {error && !results?.error && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
         </Alert>

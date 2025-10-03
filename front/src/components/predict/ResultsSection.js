@@ -1,7 +1,7 @@
 import React from 'react';
 import { 
   Box, Typography, Chip, Table, TableBody, TableCell, 
-  TableContainer, TableHead, TableRow, IconButton 
+  TableContainer, TableHead, TableRow, IconButton, Alert 
 } from '@mui/material';
 import { Visibility } from '@mui/icons-material';
 
@@ -13,6 +13,12 @@ const ResultsSection = ({ results, inputData, modelType, onViewPlanetInfo }) => 
       <Typography variant="h6" gutterBottom>
         Prediction Results
       </Typography>
+      
+      {results.error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {results.error}
+        </Alert>
+      )}
       
       <Box sx={{ mb: 2 }}>
         <Chip label={`Model: ${results.model_type.toUpperCase()}`} sx={{ mr: 1 }} />

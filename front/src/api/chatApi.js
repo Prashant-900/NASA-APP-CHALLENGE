@@ -14,7 +14,7 @@ const validateInput = (input, maxLength = 1000) => {
 };
 
 const validateTable = (table) => {
-  const allowedTables = ['k2', 'toi', 'cum'];
+  const allowedTables = ['k2', 'toi', 'kepler'];
   if (!table || !allowedTables.includes(table)) {
     throw new Error('Invalid table name');
   }
@@ -78,27 +78,16 @@ export const chatApi = {
                 const data = JSON.parse(jsonStr);
                 // Validate data structure
                 if (typeof data === 'object' && data !== null) {
-                  console.log('📡 Received stream data:', {
-                    done: data.done,
-                    hasChunk: !!data.chunk,
-                    hasData: !!data.data,
-                    hasPlot: !!data.plot,
-                    openNewTab: data.open_new_tab,
-                    plotLength: data.plot ? data.plot.length : 0,
-                    plotPreview: data.plot ? data.plot.substring(0, 100) + '...' : 'No plot'
-                  });
                   onChunk(data);
                 }
               }
             } catch (e) {
-              console.error('Error parsing chunk:', e);
-              // Don't expose parsing errors to user
+              // Silent error handling for parsing issues
             }
           }
         }
       }
     } catch (error) {
-      console.error('Stream error:', error);
       onChunk({ 
         chunk: 'Connection error occurred', 
         done: true, 

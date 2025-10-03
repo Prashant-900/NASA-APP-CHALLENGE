@@ -29,13 +29,7 @@ const ChatArea = forwardRef(({ isOpen, onClose, currentTable, onOpenNewTab, scro
         const sanitizedMessage = sanitizeInput(trimmedMessage, 1000);
         const validTable = validateTableName(selectedTable);
         
-        if (!sanitizedMessage) {
-          console.error('Invalid message input');
-          return;
-        }
-        
-        if (!validTable) {
-          console.error('Invalid table selection');
+        if (!sanitizedMessage || !validTable) {
           return;
         }
         
@@ -56,21 +50,12 @@ const ChatArea = forwardRef(({ isOpen, onClose, currentTable, onOpenNewTab, scro
         // Stream response
         let fullResponse = '';
         await chatApi.sendMessageStream(sanitizedMessage, validTable, botMessageId, (chunk) => {
-          console.log('📥 Received chunk:', chunk);
-          
           if (chunk.chunk) {
             fullResponse += chunk.chunk;
             updateMessage(botMessageId, { text: fullResponse, streaming: !chunk.done, data: chunk.data });
           }
           
           if (chunk.done && chunk.open_new_tab) {
-            console.log('🎯 Adding query response:', {
-              hasData: !!chunk.data,
-              hasPlot: !!chunk.plot,
-              plotLength: chunk.plot ? chunk.plot.length : 0,
-              plotPreview: chunk.plot ? chunk.plot.substring(0, 200) + '...' : 'No plot'
-            });
-            
             const queryId = addQueryResponse({
               response: fullResponse,
               data: chunk.data,
@@ -81,7 +66,6 @@ const ChatArea = forwardRef(({ isOpen, onClose, currentTable, onOpenNewTab, scro
             updateMessage(botMessageId, { queryId });
             // Open new tab if there's data OR plot
             if (chunk.data || chunk.plot) {
-              console.log('🔄 Opening new tab with:', { queryId, hasData: !!chunk.data, hasPlot: !!chunk.plot });
               onOpenNewTab?.(chunk.data, validTable, fullResponse);
             }
           }
@@ -91,7 +75,7 @@ const ChatArea = forwardRef(({ isOpen, onClose, currentTable, onOpenNewTab, scro
           }
         });
       } catch (error) {
-        console.error('Message send error:', error);
+        // Handle error silently
       }
     }
   };
@@ -238,7 +222,7 @@ const ChatArea = forwardRef(({ isOpen, onClose, currentTable, onOpenNewTab, scro
             >
               <MenuItem value={TABLE_NAMES.K2}>{TABLE_LABELS[TABLE_NAMES.K2]}</MenuItem>
               <MenuItem value={TABLE_NAMES.TOI}>{TABLE_LABELS[TABLE_NAMES.TOI]}</MenuItem>
-              <MenuItem value={TABLE_NAMES.CUM}>{TABLE_LABELS[TABLE_NAMES.CUM]}</MenuItem>
+              <MenuItem value={TABLE_NAMES.KEPLER}>{TABLE_LABELS[TABLE_NAMES.KEPLER]}</MenuItem>
             </Select>
           </FormControl>
         </Box>

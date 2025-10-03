@@ -7,7 +7,7 @@ table_bp = Blueprint('table', __name__)
 
 @table_bp.route('/tables', methods=['GET'])
 def get_tables():
-    return jsonify(['k2', 'toi', 'cum'])
+    return jsonify(['k2', 'toi', 'kepler'])
 
 @table_bp.route('/table/<table_name>/columns', methods=['GET'])
 def get_columns(table_name):
