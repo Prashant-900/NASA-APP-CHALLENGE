@@ -11,11 +11,11 @@ function Page2() {
         transition={{ duration: 0.8 }}
       >
         <Typography variant="h3" gutterBottom sx={{ color: 'primary.main', mb: 4, textAlign: 'center' }}>
-          About Exoplanet Detection
+          How Do We Find Exoplanets?
         </Typography>
         
         <Typography variant="h6" sx={{ mb: 4, color: 'text.secondary', textAlign: 'center', maxWidth: '800px' }}>
-          Our platform uses advanced machine learning models to analyze data from multiple space missions including Kepler K2, TESS Objects of Interest (TOI), and Cumulative datasets.
+          Scroll To See How
         </Typography>
       </motion.div>
     </Box>
