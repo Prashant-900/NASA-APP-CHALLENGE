@@ -64,8 +64,14 @@ def predict_data():
         # Clean up uploaded file
         os.remove(filepath)
         
-        # Add predictions to original data
-        data['exoplanet_prediction'] = predictions
+        # Handle different wrapper outputs
+        if model_type in ['k2', 'toi', 'kepler']:
+            # These wrappers return DataFrame with predicted_class column
+            data = predictions
+            predictions = predictions['predicted_class'].tolist()
+        else:
+            # Add predictions to original data
+            data['exoplanet_prediction'] = predictions
         
         # Save result as CSV
         result_filename = f'predictions_{model_type}_{filename.rsplit(".", 1)[0]}.csv'
@@ -121,7 +127,10 @@ def predict_manual():
                 'st_dist', 'pl_insol', 'depth_mag_ratio', 'pl_tranmid', 'dec', 'pl_orbper', 'pl_rade'
             ]
         else:  # k2
-            required_features = ['pl_orbper', 'pl_rade', 'st_teff', 'st_rad', 'st_mass', 'st_logg', 'sy_dist', 'sy_vmag', 'sy_kmag', 'sy_gaiamag']
+            required_features = [
+                'sy_snum', 'sy_pnum', 'disc_year', 'pl_orbper', 'pl_orbpererr1',
+                'pl_rade', 'pl_radeerr1', 'pl_radeerr2', 'ttv_flag', 'st_teff'
+            ]
         
         # Validate required features
         missing_features = []
@@ -142,15 +151,14 @@ def predict_manual():
             except (ValueError, TypeError):
                 return jsonify({'error': f'Invalid value for {feature}: must be a number'}), 400
         
-        # Add optional features for Kepler and TOI models
-        if model_type in ['kepler', 'toi']:
-            optional_features = features.get('optional_features', {})
-            for feature, value in optional_features.items():
-                if value and str(value).strip():
-                    try:
-                        feature_data[feature] = [float(value)]
-                    except (ValueError, TypeError):
-                        pass  # Skip invalid optional features
+        # Add optional features for all models
+        optional_features = features.get('optional_features', {})
+        for feature, value in optional_features.items():
+            if value and str(value).strip():
+                try:
+                    feature_data[feature] = [float(value)]
+                except (ValueError, TypeError):
+                    pass  # Skip invalid optional features
         
         df = pd.DataFrame(feature_data)
         
@@ -173,17 +181,17 @@ def predict_manual():
                 'error': prediction
             })
         
-        # Handle prediction result
-        if hasattr(prediction, 'tolist'):
-            prediction = prediction.tolist()[0] if len(prediction) > 0 else 'UNKNOWN'
-        elif hasattr(prediction, '__iter__') and not isinstance(prediction, str):
-            prediction = list(prediction)[0] if len(list(prediction)) > 0 else 'UNKNOWN'
-        
-        # For Kepler and TOI models, return string prediction; for K2, convert to boolean
-        if model_type in ['kepler', 'toi']:
-            result_prediction = str(prediction)
+        # Handle different wrapper outputs
+        if model_type in ['k2', 'toi', 'kepler']:
+            # These wrappers return DataFrame with predicted_class column
+            result_prediction = prediction['predicted_class'].iloc[0]
         else:
-            result_prediction = bool(prediction)
+            # Handle prediction result
+            if hasattr(prediction, 'tolist'):
+                prediction = prediction.tolist()[0] if len(prediction) > 0 else 'UNKNOWN'
+            elif hasattr(prediction, '__iter__') and not isinstance(prediction, str):
+                prediction = list(prediction)[0] if len(list(prediction)) > 0 else 'UNKNOWN'
+            result_prediction = str(prediction)
         
         return jsonify({
             'predictions': result_prediction,

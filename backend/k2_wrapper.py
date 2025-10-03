@@ -1,67 +1,116 @@
-import numpy as np
 import pandas as pd
-from sklearn.preprocessing import StandardScaler
-from sklearn.experimental import enable_iterative_imputer
-from sklearn.impute import KNNImputer, IterativeImputer
-import catboost
-req_col = ["pl_orbper","pl_rade","st_teff","st_rad","st_mass","st_logg","sy_dist","sy_vmag","sy_kmag","sy_gaiamag"]
+import numpy as np
+import pickle
+import xgboost as xgb
+import os
+import warnings
 
+warnings.filterwarnings('ignore')
+
+# -------------------------------
+# Paths
+# -------------------------------
+script_dir = os.path.dirname(os.path.abspath(__file__))
+
+# -------------------------------
+# Load preprocessing objects
+# -------------------------------
 try:
-    model = catboost.CatBoostClassifier().load_model("models\k2.bin")
+    with open(os.path.join(script_dir, "models", "k2_preprocess.pkl"), "rb") as f:
+        preprocess_objs = pickle.load(f)
+
+    imputer = preprocess_objs["imputer"]
+    scaler = preprocess_objs["scaler"]
+    label_encoder = preprocess_objs["label_encoder"]
+    feature_names = preprocess_objs["feature_names"]
+    categorical_encoders = preprocess_objs.get("categorical_encoders", {})
+    outlier_stats = preprocess_objs["outlier_stats"]
+
 except FileNotFoundError:
-    raise FileNotFoundError("K2 model file not found. Please ensure models/k2.bin exists.")
-except Exception as e:
-    raise RuntimeError(f"Failed to load K2 model: {str(e)}")
+    raise FileNotFoundError("K2_Preprocessing_Model.pkl not found. Please run 'K2_preprocessing_model_creator.py' first")
 
-def preprocess(X):
-    # 1. Log transform skewed columns
-    skewed_cols = ["pl_orbper", "pl_orbsmax", "pl_bmasse", "pl_insol", "pl_rade"]  
-    for col in skewed_cols:
-        if col in X.columns:
-            X[col] = np.log1p(X[col])
+# -------------------------------
+# Load trained K2 model
+# -------------------------------
+try:
+    with open(os.path.join(script_dir, "models", "k2.pkl"), "rb") as f:
+        model = pickle.load(f)
+except FileNotFoundError:
+    raise FileNotFoundError("k2.pkl not found. Please run 'Train.py' first to train the model")
 
-    # 2. Median imputation for selected columns (excluding st_mass)
-    median_cols = ["pl_orbper", "pl_orbsmax", "pl_bmasse", "pl_insol"]
-    for col in median_cols:
-        if col in X.columns:
-            median_val = X[col].median()
-            X[col] = X[col].fillna(median_val)
+# -------------------------------
+# Preprocessing Function
+# -------------------------------
+def preprocess(df_raw):
+    """
+    Preprocesses user input DataFrame following the same pipeline as training
+    """
 
-    # 3. Impute st_mass using IterativeImputer with st_rad and st_teff as predictors
-    if "st_mass" in X.columns and "st_rad" in X.columns and "st_teff" in X.columns:
-        imputer_mass = IterativeImputer(random_state=42, max_iter=10, initial_strategy="median")
-        mass_features = ["st_mass", "st_rad", "st_teff"]
-        X[mass_features] = imputer_mass.fit_transform(X[mass_features])
+    # 1. Check column overlap
+    overlap_cols = [c for c in df_raw.columns if c in feature_names]
+    if len(overlap_cols) < 10:
+        return f"Need at least 10 overlapping features, found {len(overlap_cols)}"
 
-    # 4. KNN imputation for remaining numeric columns
-    knn_cols = [col for col in X.columns if col not in median_cols + ["st_mass"]]
-    if knn_cols:
-        knn_imputer = KNNImputer(n_neighbors=5)
-        X[knn_cols] = knn_imputer.fit_transform(X[knn_cols])
+    # 2. Keep only overlapping features
+    df = df_raw[overlap_cols].copy()
 
-    # 5. Standard scaling
-    scaler = StandardScaler()
-    X = pd.DataFrame(scaler.fit_transform(X), 
-                           columns=X.columns, index=X.index)
+    # 3. Convert to numeric
+    for col in df.columns:
+        df[col] = pd.to_numeric(df[col], errors='coerce')
 
-    return X
+    # 4. Handle missing columns
+    missing_cols = [col for col in feature_names if col not in df.columns]
+    for col in missing_cols:
+        df[col] = np.nan
 
-def predict(data):
-    if not isinstance(data, pd.DataFrame):
-        return "Invalid data: Input must be a pandas DataFrame"
-    
+    # Ensure feature order
+    df = df[feature_names]
+
+    # 5. Outlier clipping
+    for col, stats in outlier_stats.items():
+        if col in df.columns:
+            df[col] = df[col].clip(lower=stats['lower'], upper=stats['upper'])
+
+    # 6. Impute missing values
+    df_imputed = pd.DataFrame(
+        imputer.transform(df.values),
+        columns=feature_names,
+        index=df.index
+    )
+
+    # 7. Scale features
+    df_scaled_array = scaler.transform(df_imputed.values)
+
+    return df_scaled_array
+
+# -------------------------------
+# Prediction Function
+# -------------------------------
+def predict(df_raw):
+    """Make predictions using K2 model"""
     try:
-        # Check if all required columns are present
-        missing_cols = [col for col in req_col if col not in data.columns]
-        if missing_cols:
-            return f"Invalid data: Missing required columns: {missing_cols}"
-        
-        if data[req_col].values.shape[1] != len(req_col):
-            return "Invalid data: Column count mismatch"
-        
-        data = preprocess(data[req_col])
-        return model.predict(data)
-    except KeyError as e:
-        return f"Invalid data: Column access error: {str(e)}"
+        processed_data = preprocess(df_raw)
+
+        if isinstance(processed_data, str):
+            return processed_data  # return error message if preprocessing failed
+
+        # Predictions
+        pred_encoded = model.predict(processed_data)
+        pred_proba = model.predict_proba(processed_data)
+
+        pred_labels = label_encoder.inverse_transform(pred_encoded.astype(int))
+        pred_confidence = np.max(pred_proba, axis=1)
+
+        # Attach results to DataFrame
+        df_output = df_raw.copy()
+        df_output["predicted_class"] = pred_labels
+        df_output["confidence"] = pred_confidence
+
+        # Add class probabilities
+        for i, class_name in enumerate(label_encoder.classes_):
+            df_output[f"prob_{class_name}"] = pred_proba[:, i]
+
+        return df_output
+
     except Exception as e:
-        return f"Prediction error: {str(e)}"
+        return f"K2 prediction failed: {str(e)}"

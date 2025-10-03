@@ -41,9 +41,8 @@ const ManualInputSection = ({
   };
   
   const handlePredict = () => {
-    // Pass optional features for Kepler and TOI models
-    const shouldPassOptional = modelType === TABLE_NAMES.KEPLER || modelType === TABLE_NAMES.TOI;
-    onPredict(shouldPassOptional ? optionalFeatures : null);
+    // Pass optional features for all models
+    onPredict(optionalFeatures);
   };
   
   const requiredFeatures = getRequiredFeatures();
@@ -117,6 +116,34 @@ const ManualInputSection = ({
           <AccordionDetails>
             <Grid container spacing={2}>
               {PREDICTION_CONSTANTS.TOI_OPTIONAL_FEATURES.map((field) => (
+                <Grid item xs={12} sm={6} md={4} key={field}>
+                  <TextField
+                    fullWidth
+                    label={PREDICTION_CONSTANTS.FEATURE_LABELS[field] || field}
+                    type="number"
+                    value={optionalFeatures[field] || ''}
+                    onChange={(e) => handleOptionalFeatureChange(field, e.target.value)}
+                    size="small"
+                    placeholder="Optional"
+                  />
+                </Grid>
+              ))}
+            </Grid>
+          </AccordionDetails>
+        </Accordion>
+      )}
+      
+      {/* Optional Features for K2 */}
+      {modelType === TABLE_NAMES.K2 && (
+        <Accordion sx={{ mb: 2 }}>
+          <AccordionSummary expandIcon={<ExpandMore />}>
+            <Typography variant="subtitle1">
+              Optional Features (Improve Accuracy)
+            </Typography>
+          </AccordionSummary>
+          <AccordionDetails>
+            <Grid container spacing={2}>
+              {PREDICTION_CONSTANTS.K2_OPTIONAL_FEATURES.map((field) => (
                 <Grid item xs={12} sm={6} md={4} key={field}>
                   <TextField
                     fullWidth

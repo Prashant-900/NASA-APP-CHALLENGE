@@ -3,8 +3,15 @@ export const PREDICTION_CONSTANTS = {
   
   // K2 Model Features
   K2_REQUIRED_FEATURES: [
-    'pl_orbper', 'pl_rade', 'st_teff', 'st_rad', 'st_mass', 
-    'st_logg', 'sy_dist', 'sy_vmag', 'sy_kmag', 'sy_gaiamag'
+    'sy_snum', 'sy_pnum', 'disc_year', 'pl_orbper', 'pl_orbpererr1',
+    'pl_rade', 'pl_radeerr1', 'pl_radeerr2', 'ttv_flag', 'st_teff'
+  ],
+  
+  K2_OPTIONAL_FEATURES: [
+    'st_tefferr1', 'st_rad', 'st_raderr1', 'st_raderr2', 'st_mass',
+    'st_masserr1', 'st_met', 'st_logg', 'ra', 'dec', 'sy_dist',
+    'sy_disterr1', 'sy_vmag', 'sy_vmagerr1', 'sy_kmag', 'discoverymethod',
+    'pl_bmassprov', 'st_metratio'
   ],
   
   // Kepler Model Features
@@ -24,16 +31,34 @@ export const PREDICTION_CONSTANTS = {
   
   FEATURE_LABELS: {
     // K2 Features
-    pl_orbper: 'Orbital Period (pl_orbper)',
-    pl_rade: 'Planet Radius (pl_rade)',
-    st_teff: 'Stellar Temperature (st_teff)',
-    st_rad: 'Stellar Radius (st_rad)',
-    st_mass: 'Stellar Mass (st_mass)',
-    st_logg: 'Stellar Log g (st_logg)',
-    sy_dist: 'System Distance (sy_dist)',
-    sy_vmag: 'V Magnitude (sy_vmag)',
-    sy_kmag: 'K Magnitude (sy_kmag)',
-    sy_gaiamag: 'Gaia Magnitude (sy_gaiamag)',
+    sy_snum: 'Number of Stars',
+    sy_pnum: 'Number of Planets',
+    disc_year: 'Discovery Year',
+    pl_orbper: 'Orbital Period',
+    pl_orbpererr1: 'Orbital Period Error 1',
+    pl_rade: 'Planet Radius',
+    pl_radeerr1: 'Planet Radius Error 1',
+    pl_radeerr2: 'Planet Radius Error 2',
+    ttv_flag: 'TTV Flag',
+    st_teff: 'Stellar Temperature',
+    st_tefferr1: 'Stellar Temperature Error 1',
+    st_rad: 'Stellar Radius',
+    st_raderr1: 'Stellar Radius Error 1',
+    st_raderr2: 'Stellar Radius Error 2',
+    st_mass: 'Stellar Mass',
+    st_masserr1: 'Stellar Mass Error 1',
+    st_met: 'Stellar Metallicity',
+    st_logg: 'Stellar Log g',
+    ra: 'Right Ascension',
+
+    sy_dist: 'System Distance',
+    sy_disterr1: 'System Distance Error 1',
+    sy_vmag: 'V Magnitude',
+    sy_vmagerr1: 'V Magnitude Error 1',
+    sy_kmag: 'K Magnitude',
+    discoverymethod: 'Discovery Method',
+    pl_bmassprov: 'Planet Mass Provenance',
+    st_metratio: 'Stellar Metallicity Ratio',
     
     // Kepler Features
     koi_score: 'KOI Score',
@@ -66,16 +91,16 @@ export const PREDICTION_CONSTANTS = {
   },
   
   DEFAULT_K2_FEATURES: {
+    sy_snum: '',
+    sy_pnum: '',
+    disc_year: '',
     pl_orbper: '',
+    pl_orbpererr1: '',
     pl_rade: '',
-    st_teff: '',
-    st_rad: '',
-    st_mass: '',
-    st_logg: '',
-    sy_dist: '',
-    sy_vmag: '',
-    sy_kmag: '',
-    sy_gaiamag: ''
+    pl_radeerr1: '',
+    pl_radeerr2: '',
+    ttv_flag: '',
+    st_teff: ''
   },
   
   DEFAULT_KEPLER_FEATURES: {
