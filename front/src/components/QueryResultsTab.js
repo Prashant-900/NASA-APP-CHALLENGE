@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useRef, useCallback, lazy, Suspense, forwardRef, useImperativeHandle } from 'react';
 import {
   Paper, Typography, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Box, Chip, IconButton, Divider
@@ -11,7 +11,7 @@ import MarkdownRenderer from './common/MarkdownRenderer';
 
 const Plot = lazy(() => import('react-plotly.js'));
 
-function QueryResultsTab({ scrollToMessage }) {
+const QueryResultsTab = forwardRef(({ scrollToMessage }, ref) => {
   const responses = useQueryResponses();
   const [tableData, setTableData] = useState({});
   const [currentPage, setCurrentPage] = useState({});
@@ -42,6 +42,17 @@ function QueryResultsTab({ scrollToMessage }) {
   }, []);
   
   useEffect(() => {
+    console.log('📊 QueryResultsTab responses changed:', {
+      count: responses.length,
+      responses: responses.map(r => ({
+        queryId: r.queryId,
+        hasData: !!r.data,
+        hasPlot: !!r.plot,
+        plotLength: r.plot ? r.plot.length : 0,
+        plotStartsWith: r.plot ? r.plot.substring(0, 50) + '...' : 'No plot'
+      }))
+    });
+    
     responses.forEach(response => {
       if (response.data && !tableData[response.queryId]) {
         setTableData(prev => ({
@@ -58,11 +69,35 @@ function QueryResultsTab({ scrollToMessage }) {
         }));
       }
     });
-  }, [responses]);
+  }, [responses, tableData]);
   
-  const scrollToQuery = (queryId) => {
-    queryRefs.current[queryId]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
+  const scrollToQuery = useCallback((queryId) => {
+    const targetElement = queryRefs.current[queryId];
+    if (targetElement) {
+      // Scroll to the element with some offset from the top
+      targetElement.scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'start',
+        inline: 'nearest'
+      });
+      
+      // Add a visual highlight effect
+      targetElement.style.transition = 'background-color 0.3s ease';
+      targetElement.style.backgroundColor = 'rgba(25, 118, 210, 0.1)'; // Light blue highlight
+      
+      // Remove highlight after 2 seconds
+      setTimeout(() => {
+        targetElement.style.backgroundColor = '';
+      }, 2000);
+    } else {
+      console.warn(`Query element with ID ${queryId} not found`);
+    }
+  }, []);
+  
+  // Expose scrollToQuery method through ref
+  useImperativeHandle(ref, () => ({
+    scrollToQuery
+  }), [scrollToQuery]);
   
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -106,129 +141,148 @@ function QueryResultsTab({ scrollToMessage }) {
       </Box>
       
       <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
-        {responses.map((response, index) => (
-          <Box 
-            key={response.queryId}
-            ref={el => queryRefs.current[response.queryId] = el}
-            sx={{ mb: 3, border: '1px solid', borderColor: 'grey.300', borderRadius: 1 }}
-          >
-            <Box sx={{ p: 2, bgcolor: 'grey.50', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Box>
-                <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
-                  Query {response.queryId} - {response.table.toUpperCase()}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {response.timestamp}
-                </Typography>
-              </Box>
-              <Chip 
-                label={`${response.messageId}`} 
-                size="small" 
-                color="secondary" 
-                variant="outlined"
-                onClick={() => scrollToMessage?.(response.messageId)}
-                sx={{ cursor: 'pointer' }}
-              />
-            </Box>
-            
-            {(response.data || response.plot) && (
-              <Box sx={{ p: 2, borderTop: '1px solid', borderColor: 'grey.300' }}>
-                
-                {response.plot && Object.keys(response.plot).length > 0 && (
-                  <Box sx={{ mb: 3 }}>
-                    <Typography variant="subtitle2" sx={{ mb: 2 }}>Visualization</Typography>
-                    <Box sx={{ border: '1px solid', borderColor: 'grey.300', borderRadius: 1, overflow: 'hidden' }}>
-                      <Suspense fallback={<Box sx={{ height: '400px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Loading plot...</Box>}>
-                        <Plot
-                          data={response.plot.data || []}
-                          layout={{
-                            ...response.plot.layout,
-                            autosize: true,
-                            margin: { l: 50, r: 50, t: 50, b: 50 }
-                          }}
-                          config={{ displayModeBar: false, responsive: true }}
-                          style={{ width: '100%', height: '400px' }}
-                        />
-                      </Suspense>
-                    </Box>
-                  </Box>
-                )}
-                
-                {response.data && (
-                  <Box>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                  <Typography variant="subtitle2">Data Results</Typography>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <IconButton 
-                      size="small" 
-                      onClick={() => loadTableData(response.queryId, response.table, Math.max(0, (currentPage[response.queryId] || 0) - 1))}
-                      disabled={(currentPage[response.queryId] || 0) === 0}
-                    >
-                      <ArrowBack />
-                    </IconButton>
-                    <Typography variant="caption">
-                      Page {(currentPage[response.queryId] || 0) + 1}
-                    </Typography>
-                    <IconButton 
-                      size="small" 
-                      onClick={() => loadTableData(response.queryId, response.table, (currentPage[response.queryId] || 0) + 1)}
-                      disabled={!hasMoreData[response.queryId]}
-                    >
-                      <ArrowForward />
-                    </IconButton>
-                  </Box>
+        {responses.map((response, index) => {
+          console.log(`🎨 Rendering response ${response.queryId}:`, {
+            hasData: !!response.data,
+            hasPlot: !!response.plot,
+            plotLength: response.plot ? response.plot.length : 0,
+            showVisualization: !!(response.plot && response.plot.trim()),
+            plotPreview: response.plot ? response.plot.substring(0, 100) + '...' : 'No plot'
+          });
+          
+          return (
+            <Box 
+              key={response.queryId}
+              ref={el => queryRefs.current[response.queryId] = el}
+              sx={{ mb: 3, border: '1px solid', borderColor: 'grey.300', borderRadius: 1 }}
+            >
+              <Box sx={{ p: 2, bgcolor: 'grey.50', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Box>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
+                    Query {response.queryId} - {response.table.toUpperCase()}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {response.timestamp}
+                  </Typography>
                 </Box>
-                
-                <TableContainer sx={{ maxHeight: 300, overflow: 'auto', border: '1px solid', borderColor: 'grey.300' }}>
-                  <Table stickyHeader size="small">
-                    <TableHead>
-                      <TableRow>
-                        {(tableData[response.queryId] || response.data) && safeArrayAccess((tableData[response.queryId] || response.data), 0) && Object.keys(safeArrayAccess((tableData[response.queryId] || response.data), 0)).map((column) => (
-                          <TableCell 
-                            key={column}
-                            sx={{ 
-                              fontWeight: 'bold',
-                              backgroundColor: 'background.paper',
-                              whiteSpace: 'nowrap',
-                              minWidth: '120px'
-                            }}
-                          >
-                            {column}
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {(tableData[response.queryId] || response.data || []).slice(0, 10).map((row, rowIndex) => (
-                        <TableRow key={rowIndex} hover>
-                          {Object.keys(row).map((column) => (
-                            <TableCell 
-                              key={column}
-                              sx={{ whiteSpace: 'nowrap', minWidth: '120px' }}
-                            >
-                              {row[column] !== null && row[column] !== undefined 
-                                ? sanitizeText(String(row[column]).substring(0, 200)) 
-                                : 'N/A'
-                              }
-                            </TableCell>
-                          ))}
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-                  </Box>
-                )}
+                <Chip 
+                  label={`${response.messageId}`} 
+                  size="small" 
+                  color="secondary" 
+                  variant="outlined"
+                  onClick={() => scrollToMessage?.(response.messageId)}
+                  sx={{ cursor: 'pointer' }}
+                />
               </Box>
-            )}
-            
-            {index < responses.length - 1 && <Divider sx={{ mt: 2 }} />}
-          </Box>
-        ))}
+              
+              {(response.data || response.plot) && (
+                <Box sx={{ p: 2, borderTop: '1px solid', borderColor: 'grey.300' }}>
+                  
+                  {response.plot && response.plot.trim() && (
+                    <Box sx={{ mb: 3 }}>
+                      <Typography variant="subtitle2" sx={{ mb: 2 }}>
+                        Visualization 
+                        <span style={{ fontSize: '0.8em', color: '#666', marginLeft: '8px' }}>
+                          (Plot size: {response.plot.length} chars)
+                        </span>
+                      </Typography>
+                      <Box sx={{ border: '1px solid', borderColor: 'grey.300', borderRadius: 1, overflow: 'hidden' }}>
+                        {console.log(`🎨 About to render plot HTML for query ${response.queryId}:`, {
+                          htmlLength: response.plot.length,
+                          htmlStartsWith: response.plot.substring(0, 200),
+                          containsScripts: response.plot.includes('<script'),
+                          containsPlotlyDiv: response.plot.includes('plotly'),
+                          containsHTML: response.plot.includes('<html>')
+                        })}
+                        <div 
+                          dangerouslySetInnerHTML={{ __html: response.plot }}
+                          style={{ 
+                            width: '100%', 
+                            minHeight: '400px',
+                            backgroundColor: '#f9f9f9',
+                            border: '1px dashed #ccc'
+                          }}
+                        />
+                      </Box>
+                    </Box>
+                  )}
+                  
+                  {response.data && (
+                    <Box>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                        <Typography variant="subtitle2">Data Results</Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <IconButton 
+                            size="small" 
+                            onClick={() => loadTableData(response.queryId, response.table, Math.max(0, (currentPage[response.queryId] || 0) - 1))}
+                            disabled={(currentPage[response.queryId] || 0) === 0}
+                          >
+                            <ArrowBack />
+                          </IconButton>
+                          <Typography variant="caption">
+                            Page {(currentPage[response.queryId] || 0) + 1}
+                          </Typography>
+                          <IconButton 
+                            size="small" 
+                            onClick={() => loadTableData(response.queryId, response.table, (currentPage[response.queryId] || 0) + 1)}
+                            disabled={!hasMoreData[response.queryId]}
+                          >
+                            <ArrowForward />
+                          </IconButton>
+                        </Box>
+                      </Box>
+                      
+                      <TableContainer sx={{ maxHeight: 300, overflow: 'auto', border: '1px solid', borderColor: 'grey.300' }}>
+                        <Table stickyHeader size="small">
+                          <TableHead>
+                            <TableRow>
+                              {(tableData[response.queryId] || response.data) && safeArrayAccess((tableData[response.queryId] || response.data), 0) && Object.keys(safeArrayAccess((tableData[response.queryId] || response.data), 0)).map((column) => (
+                                <TableCell 
+                                  key={column}
+                                  sx={{ 
+                                    fontWeight: 'bold',
+                                    backgroundColor: 'background.paper',
+                                    whiteSpace: 'nowrap',
+                                    minWidth: '120px'
+                                  }}
+                                >
+                                  {column}
+                                </TableCell>
+                              ))}
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {(tableData[response.queryId] || response.data || []).slice(0, 10).map((row, rowIndex) => (
+                              <TableRow key={rowIndex} hover>
+                                {Object.keys(row).map((column) => (
+                                  <TableCell 
+                                    key={column}
+                                    sx={{ whiteSpace: 'nowrap', minWidth: '120px' }}
+                                  >
+                                    {row[column] !== null && row[column] !== undefined 
+                                      ? sanitizeText(String(row[column]).substring(0, 200)) 
+                                      : 'N/A'
+                                    }
+                                  </TableCell>
+                                ))}
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                    </Box>
+                  )}
+                </Box>
+              )}
+              
+              {index < responses.length - 1 && <Divider sx={{ mt: 2 }} />}
+            </Box>
+          );
+        })}
       </Box>
     </Paper>
   );
-}
+});
 
 export default QueryResultsTab;
 

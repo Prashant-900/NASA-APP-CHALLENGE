@@ -20,8 +20,18 @@ export const useQueryResponses = () => {
 
   useEffect(() => {
     const unsubscribe = subscribe(() => {
+      const newResponses = getQueryResponses();
+      console.log('🔄 Query responses updated:', {
+        count: newResponses.length,
+        responses: newResponses.map(r => ({
+          queryId: r.queryId,
+          hasData: !!r.data,
+          hasPlot: !!r.plot,
+          plotLength: r.plot ? r.plot.length : 0
+        }))
+      });
       // Force a new array reference to trigger re-render
-      setResponses([...getQueryResponses()]);
+      setResponses([...newResponses]);
     });
     return unsubscribe;
   }, []);

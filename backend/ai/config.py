@@ -28,11 +28,6 @@ class Config:
     def _get_database_url(self) -> str:
         """Get database URL with fallback for development"""
         db_url = os.getenv('DATABASE_URL')
-        if not db_url:
-            # Only allow localhost for development
-            fallback_url = 'postgresql://postgres:prashantshree@localhost:5432/nasa'
-            logging.warning("Using fallback database URL for development")
-            return fallback_url
         
         # Validate database URL format
         if not db_url.startswith(('postgresql://', 'postgres://')):

@@ -56,13 +56,21 @@ const ChatArea = forwardRef(({ isOpen, onClose, currentTable, onOpenNewTab, scro
         // Stream response
         let fullResponse = '';
         await chatApi.sendMessageStream(sanitizedMessage, validTable, botMessageId, (chunk) => {
+          console.log('📥 Received chunk:', chunk);
+          
           if (chunk.chunk) {
             fullResponse += chunk.chunk;
             updateMessage(botMessageId, { text: fullResponse, streaming: !chunk.done, data: chunk.data });
           }
           
-          if (chunk.done && chunk.open_new_tab && chunk.data) {
-            console.log('Received data for query:', chunk.data);
+          if (chunk.done && chunk.open_new_tab) {
+            console.log('🎯 Adding query response:', {
+              hasData: !!chunk.data,
+              hasPlot: !!chunk.plot,
+              plotLength: chunk.plot ? chunk.plot.length : 0,
+              plotPreview: chunk.plot ? chunk.plot.substring(0, 200) + '...' : 'No plot'
+            });
+            
             const queryId = addQueryResponse({
               response: fullResponse,
               data: chunk.data,
@@ -71,7 +79,11 @@ const ChatArea = forwardRef(({ isOpen, onClose, currentTable, onOpenNewTab, scro
               messageId: botMessageId
             });
             updateMessage(botMessageId, { queryId });
-            onOpenNewTab?.(chunk.data, validTable, fullResponse);
+            // Open new tab if there's data OR plot
+            if (chunk.data || chunk.plot) {
+              console.log('🔄 Opening new tab with:', { queryId, hasData: !!chunk.data, hasPlot: !!chunk.plot });
+              onOpenNewTab?.(chunk.data, validTable, fullResponse);
+            }
           }
           
           if (chunk.error) {
@@ -158,12 +170,41 @@ const ChatArea = forwardRef(({ isOpen, onClose, currentTable, onOpenNewTab, scro
                 />
                 {message.queryId !== undefined && (
                   <Chip 
-                    label={`${message.queryId}`} 
+                    label={`Query ${message.queryId}`} 
                     size="small" 
                     color="primary" 
                     variant="outlined"
-                    onClick={() => scrollToQuery?.(message.queryId)}
-                    sx={{ mt: 1, cursor: 'pointer' }}
+                    onClick={() => {
+                      // Switch to query response tab first
+                      const event = new CustomEvent('switchToQueryTab');
+                      window.dispatchEvent(event);
+                      
+                      // Try multiple methods to ensure scroll works
+                      const tryScroll = () => {
+                        // Method 1: Use prop function
+                        if (scrollToQuery) {
+                          scrollToQuery(message.queryId);
+                        }
+                        // Method 2: Use global function as backup
+                        if (window.scrollToQuery) {
+                          window.scrollToQuery(message.queryId);
+                        }
+                      };
+                      
+                      // Try immediately
+                      tryScroll();
+                      
+                      // Try again after tab switch
+                      setTimeout(tryScroll, 150);
+                    }}
+                    sx={{ 
+                      mt: 1, 
+                      cursor: 'pointer',
+                      '&:hover': {
+                        backgroundColor: 'primary.light',
+                        color: 'white'
+                      }
+                    }}
                   />
                 )}
               </Box>

@@ -37,7 +37,7 @@ import { sanitizeInput, validateTableName } from "./utils/sanitize";
 function App() {
   const [selectedTab, setSelectedTab] = useState(0);
   const [tables, setTables] = useState([]);
-  const [darkMode, setDarkMode] = useState(false);
+  const [darkMode, setDarkMode] = useState(true);
   const [planetInfoData, setPlanetInfoData] = useState(null);
   const [previousTab, setPreviousTab] = useState(0);
 
@@ -77,6 +77,14 @@ function App() {
   useEffect(() => {
     if (selectedTable) fetchColumns(selectedTable);
   }, [selectedTable]);
+
+  useEffect(() => {
+    const handleSwitchToQueryTab = () => {
+      updateTabState(1, { dataExplorerTab: 'query-response' });
+    };
+    window.addEventListener('switchToQueryTab', handleSwitchToQueryTab);
+    return () => window.removeEventListener('switchToQueryTab', handleSwitchToQueryTab);
+  }, []);
 
   const fetchTables = async () => {
     try {

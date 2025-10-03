@@ -26,6 +26,15 @@ export const updateMessage = (id, updates) => {
 };
 
 export const addQueryResponse = (response) => {
+  console.log('📝 Adding query response to store:', {
+    hasResponse: !!response.response,
+    hasData: !!response.data,
+    hasPlot: !!response.plot,
+    plotLength: response.plot ? response.plot.length : 0,
+    plotContainsHTML: response.plot ? response.plot.includes('<html>') : false,
+    plotContainsPlotly: response.plot ? response.plot.includes('plotly') : false
+  });
+  
   const queryResponse = {
     ...response,
     queryId: response.messageId,

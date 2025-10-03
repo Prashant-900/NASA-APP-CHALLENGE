@@ -4,60 +4,110 @@ import json
 import tempfile
 import os
 from typing import Dict, Any
+import plotly.io as pio
 
-def execute_plot_code(python_code: str, df_data: pd.DataFrame) -> Dict[str, Any]:
+def execute_plot_code(python_code: str, df_data: pd.DataFrame) -> str:
     """Secure plot generation without code execution"""
     try:
         # Validate and sanitize the plot code
         if not _is_safe_plot_code(python_code):
-            return {}
+            return ""
+        
+        # Clean the code - remove imports and fig.show()
+        cleaned_code = _clean_plot_code(python_code)
         
         # Execute plot code directly in controlled environment
         import plotly.express as px
         import plotly.graph_objects as go
         import numpy as np
         
+        # Prepare data - convert to DataFrame and handle data types
+        if isinstance(df_data, list):
+            df = pd.DataFrame(df_data)
+        else:
+            df = df_data.copy()
+            
+        # Clean the dataframe - convert numeric columns and handle nulls
+        for col in df.columns:
+            if df[col].dtype == 'object':
+                # Try to convert to numeric if possible
+                numeric_series = pd.to_numeric(df[col], errors='coerce')
+                if not numeric_series.isna().all():  # If some values could be converted
+                    df[col] = numeric_series
+        
         # Create safe execution environment
         safe_globals = {
             'px': px,
             'go': go,
             'np': np,
-            'df': df_data,
+            'df': df,
+            'data': df,  # Support both df and data
+            'pd': pd,    # Allow pandas functions
             'fig': None
         }
         
-        # Only allow specific plotly functions
+        # Only allow specific plotly functions (more flexible matching)
         allowed_functions = [
             'px.histogram', 'px.scatter', 'px.line', 'px.box', 'px.bar',
             'px.violin', 'px.strip', 'px.density_heatmap', 'px.scatter_matrix'
         ]
         
-        # Check if code contains only allowed functions
-        if not any(func in python_code for func in allowed_functions):
-            return {}
+        # Check if code contains plotly functions (more lenient check)
+        has_plotly_func = any(func.split('.')[1] in cleaned_code for func in allowed_functions)
+        if not has_plotly_func:
+            print(f"No allowed plotly functions found in code: {cleaned_code}")
+            return ""
         
         # Execute in restricted environment
         try:
-            exec(python_code, safe_globals)
+            exec(cleaned_code, safe_globals)
             fig = safe_globals.get('fig')
             
             if fig:
-                return json.loads(fig.to_json())
+                fig.update_layout(
+                    autosize=True,
+                    margin=dict(l=50, r=50, t=50, b=50),
+                    showlegend=True,
+                    hovermode='closest'
+                )
+                html = pio.to_html(fig, include_plotlyjs='cdn')
+                return html
             else:
-                return {}
+                return ""
                 
-        except Exception:
-            return {}
+        except Exception as e:
+            print(f"Plot execution error: {str(e)}")
+            return ""
             
-    except Exception:
-        return {}
+    except Exception as e:
+        print(f"Plot generation error: {str(e)}")
+        return ""
+
+def _clean_plot_code(code: str) -> str:
+    """Clean plot code by removing imports and unnecessary statements"""
+    lines = code.split('\n')
+    cleaned_lines = []
+    
+    for line in lines:
+        line = line.strip()
+        # Skip import statements
+        if line.startswith('import '):
+            continue
+        # Skip fig.show() calls
+        if 'fig.show(' in line:
+            continue
+        # Keep other lines
+        if line:
+            cleaned_lines.append(line)
+    
+    return '\n'.join(cleaned_lines)
 
 def _is_safe_plot_code(code: str) -> bool:
     """Validate that plot code is safe to execute"""
     if not code or not isinstance(code, str):
         return False
     
-    # Check for dangerous imports or functions
+    # Check for dangerous imports or functions (but allow plotly imports)
     dangerous_patterns = [
         'import os', 'import sys', 'import subprocess', 'import shutil',
         'open(', 'file(', 'exec(', 'eval(', '__import__',
@@ -70,8 +120,8 @@ def _is_safe_plot_code(code: str) -> bool:
         if pattern in code_lower:
             return False
     
-    # Must contain fig assignment
-    if 'fig =' not in code:
+    # Must contain fig assignment (allow both 'fig =' and 'fig=')
+    if 'fig=' not in code.replace(' ', ''):
         return False
     
     # Must use plotly
@@ -132,23 +182,40 @@ def generate_plot_code(user_message: str, columns: list) -> str:
     if not safe_columns:
         return "fig = px.scatter(x=[1], y=[1], title='No valid columns')"
     
-    # Find mentioned column
-    col_name = safe_columns[0]  # Default to first safe column
+    # Extract mentioned columns from message
+    mentioned_cols = []
     for col in safe_columns:
         if col.lower() in message_lower:
-            col_name = col
-            break
+            mentioned_cols.append(col)
+    
+    # Find primary column (first mentioned or default)
+    col_name = mentioned_cols[0] if mentioned_cols else safe_columns[0]
     
     # Generate appropriate plot code with validation
     if 'hist' in message_lower or 'histogram' in message_lower:
         return f"fig = px.histogram(df.dropna(subset=['{col_name}']), x='{col_name}', nbins=30, title='Histogram of {col_name}')"
+    elif 'scatter' in message_lower and len(mentioned_cols) >= 2:
+        x_col, y_col = mentioned_cols[0], mentioned_cols[1]
+        # For scatter plots with log scale
+        if 'log' in message_lower:
+            return f"fig = px.scatter(df.dropna(subset=['{x_col}', '{y_col}']), x='{x_col}', y='{y_col}', log_y=True, title='Scatter Plot: {x_col} vs {y_col} (Log Y)')"
+        else:
+            return f"fig = px.scatter(df.dropna(subset=['{x_col}', '{y_col}']), x='{x_col}', y='{y_col}', title='Scatter Plot: {x_col} vs {y_col}')"
     elif 'scatter' in message_lower and len(safe_columns) >= 2:
-        return f"fig = px.scatter(df.dropna(), x='{safe_columns[0]}', y='{safe_columns[1]}', title='Scatter Plot')"
+        # Auto-select two numeric columns
+        return f"fig = px.scatter(df.dropna(subset=['{safe_columns[0]}', '{safe_columns[1]}']), x='{safe_columns[0]}', y='{safe_columns[1]}', title='Scatter Plot')"
     elif 'line' in message_lower:
-        return f"fig = px.line(df.dropna(), x=df.index, y='{col_name}', title='Line Plot of {col_name}')"
+        return f"fig = px.line(df.dropna(subset=['{col_name}']), x=df.index, y='{col_name}', title='Line Plot of {col_name}')"
     elif 'box' in message_lower:
         return f"fig = px.box(df.dropna(subset=['{col_name}']), y='{col_name}', title='Box Plot of {col_name}')"
+    elif 'relation' in message_lower and len(mentioned_cols) >= 2:
+        x_col, y_col = mentioned_cols[0], mentioned_cols[1]
+        if 'log' in message_lower:
+            return f"fig = px.scatter(df.dropna(subset=['{x_col}', '{y_col}']), x='{x_col}', y='{y_col}', log_y=True, title='Relationship: {x_col} vs {y_col} (Log Y)')"
+        else:
+            return f"fig = px.scatter(df.dropna(subset=['{x_col}', '{y_col}']), x='{x_col}', y='{y_col}', title='Relationship: {x_col} vs {y_col}')"
     else:
+        # Default to histogram
         return f"fig = px.histogram(df.dropna(subset=['{col_name}']), x='{col_name}', nbins=30, title='Distribution of {col_name}')"
 
 def _is_safe_column_name(column_name: str) -> bool:

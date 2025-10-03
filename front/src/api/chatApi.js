@@ -78,6 +78,15 @@ export const chatApi = {
                 const data = JSON.parse(jsonStr);
                 // Validate data structure
                 if (typeof data === 'object' && data !== null) {
+                  console.log('📡 Received stream data:', {
+                    done: data.done,
+                    hasChunk: !!data.chunk,
+                    hasData: !!data.data,
+                    hasPlot: !!data.plot,
+                    openNewTab: data.open_new_tab,
+                    plotLength: data.plot ? data.plot.length : 0,
+                    plotPreview: data.plot ? data.plot.substring(0, 100) + '...' : 'No plot'
+                  });
                   onChunk(data);
                 }
               }

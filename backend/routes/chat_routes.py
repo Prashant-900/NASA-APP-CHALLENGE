@@ -67,8 +67,9 @@ def chat_stream():
                 should_open_tab = result.get('show_in_query_tab', False)
                 
                 # Store query data in memory for pagination
-                if should_open_tab and result.get('data'):
-                    print(f"Caching query {query_id} with {len(result['data'])} records")
+                if should_open_tab and (result.get('data') or result.get('plot')):
+                    data_count = len(result.get('data') or [])
+                    print(f"Caching query {query_id} with {data_count} records and plot: {'Yes' if result.get('plot') else 'No'}")
                     query_cache.set(query_id, {
                         'data': result['data'],
                         'plot': result.get('plot'),
