@@ -11,7 +11,7 @@ import texture_6 from "../../assets/texture_6.jpg";
 import texture_7 from "../../assets/texture_7.jpg";
 import texture_8 from "../../assets/texture_8.jpg";
 import texture_9 from "../../assets/texture_9.jpg";
-import { PLANET_FEATURE_MAPPING } from "../../constants/planetMapping";
+
 
 function Planet3D({ planetData }) {
   const mountRef = useRef(null);
@@ -34,25 +34,33 @@ function Planet3D({ planetData }) {
     let planetRadius, planetWeight, planetName, planetDistance;
 
     if (isPredictionData) {
-      const mapping =
-        PLANET_FEATURE_MAPPING[datasetType] || PLANET_FEATURE_MAPPING.k2;
-      planetRadius = planetData[mapping.radius] || planetData.pl_rade || 1;
-      planetWeight = mapping.weight ? planetData[mapping.weight] : null;
-      planetDistance = mapping.distance ? planetData[mapping.distance] : null;
-      planetName = `Predicted ${
-        planetData.prediction ? "Exoplanet" : "Non-Exoplanet"
-      }`;
-    } else if (datasetType && PLANET_FEATURE_MAPPING[datasetType]) {
-      const mapping = PLANET_FEATURE_MAPPING[datasetType];
-      planetRadius = planetData[mapping.radius] || null;
-      planetWeight = mapping.weight ? planetData[mapping.weight] : null;
-      planetDistance = mapping.distance ? planetData[mapping.distance] : null;
-      planetName = planetData[mapping.name] || null;
+      planetRadius = planetData.pl_rade || 1;
+      planetWeight = planetData.pl_bmasse || null;
+      planetDistance = planetData.st_dist || planetData.sy_dist || null;
+      planetName = `Predicted ${planetData.prediction ? "Exoplanet" : "Non-Exoplanet"}`;
     } else {
-      planetRadius = 1;
-      planetWeight = null;
-      planetDistance = null;
-      planetName = "Unknown Planet";
+      // Direct mapping based on dataset type
+      if (datasetType === 'k2') {
+        planetRadius = planetData.pl_rade || null;
+        planetWeight = planetData.pl_bmasse || null;
+        planetDistance = planetData.sy_dist || null;
+        planetName = planetData.hostname || null;
+      } else if (datasetType === 'toi') {
+        planetRadius = planetData.pl_rade || null;
+        planetWeight = null;
+        planetDistance = planetData.st_dist || null;
+        planetName = planetData.toi || null;
+      } else if (datasetType === 'cum') {
+        planetRadius = planetData.kep_srad || null;
+        planetWeight = null;
+        planetDistance = planetData.sy_dist || null;
+        planetName = planetData.kepler_name || null;
+      } else {
+        planetRadius = 1;
+        planetWeight = null;
+        planetDistance = null;
+        planetName = "Unknown Planet";
+      }
     }
 
     const earthRadius = 1;

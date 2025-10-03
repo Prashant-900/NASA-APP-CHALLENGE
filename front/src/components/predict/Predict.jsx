@@ -1,7 +1,7 @@
 import React from 'react';
 import { Paper, Typography, Alert, Divider } from '@mui/material';
 import { dataApi } from '../../api';
-import { TABLE_NAMES } from '../../constants';
+import { TABLE_NAMES, API_ENDPOINTS } from '../../constants';
 import { PREDICTION_CONSTANTS } from '../../constants/predict.jsx';
 import FileUploadSection from './FileUploadSection';
 import ManualInputSection from './ManualInputSection';
@@ -145,7 +145,7 @@ const Predict = ({ persistentState = {}, onStateChange, onViewPlanetInfo }) => {
     if (!results || !results.download_url) return;
     
     const link = document.createElement('a');
-    link.href = `${("http://localhost:5000/api").replace('/api', '')}${results.download_url}`;
+    link.href = `${API_ENDPOINTS.BASE_URL.replace('/api', '')}${results.download_url}`;
     link.download = '';
     document.body.appendChild(link);
     link.click();

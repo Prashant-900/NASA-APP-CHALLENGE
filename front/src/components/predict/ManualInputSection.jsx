@@ -160,6 +160,8 @@ const ManualInputSection = ({
           </AccordionDetails>
         </Accordion>
       )}
+      
+
 
       <Button
         variant="contained"

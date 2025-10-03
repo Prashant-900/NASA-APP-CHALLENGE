@@ -1,7 +1,7 @@
 export const PREDICTION_CONSTANTS = {
   ALLOWED_FILE_TYPES: ['csv', 'xlsx', 'xls'],
   
-  // K2 Model Features
+  // K2 Model Features (Top 10 required, rest optional)
   K2_REQUIRED_FEATURES: [
     'sy_snum', 'sy_pnum', 'disc_year', 'pl_orbper', 'pl_orbpererr1',
     'pl_rade', 'pl_radeerr1', 'pl_radeerr2', 'ttv_flag', 'st_teff'
@@ -32,26 +32,26 @@ export const PREDICTION_CONSTANTS = {
   FEATURE_LABELS: {
     // K2 Features
     sy_snum: 'Number of Stars',
-    sy_pnum: 'Number of Planets',
+    sy_pnum: 'Number of Planets', 
     disc_year: 'Discovery Year',
-    pl_orbper: 'Orbital Period',
+    pl_orbper: 'Orbital Period (days)',
     pl_orbpererr1: 'Orbital Period Error 1',
-    pl_rade: 'Planet Radius',
+    pl_rade: 'Planet Radius (Earth radii)',
     pl_radeerr1: 'Planet Radius Error 1',
     pl_radeerr2: 'Planet Radius Error 2',
     ttv_flag: 'TTV Flag',
-    st_teff: 'Stellar Temperature',
+    st_teff: 'Stellar Temperature (K)',
     st_tefferr1: 'Stellar Temperature Error 1',
-    st_rad: 'Stellar Radius',
+    st_rad: 'Stellar Radius (Solar radii)',
     st_raderr1: 'Stellar Radius Error 1',
     st_raderr2: 'Stellar Radius Error 2',
-    st_mass: 'Stellar Mass',
+    st_mass: 'Stellar Mass (Solar masses)',
     st_masserr1: 'Stellar Mass Error 1',
     st_met: 'Stellar Metallicity',
     st_logg: 'Stellar Log g',
-    ra: 'Right Ascension',
-
-    sy_dist: 'System Distance',
+    ra: 'Right Ascension (deg)',
+    dec: 'Declination (deg)',
+    sy_dist: 'System Distance (pc)',
     sy_disterr1: 'System Distance Error 1',
     sy_vmag: 'V Magnitude',
     sy_vmagerr1: 'V Magnitude Error 1',
