@@ -30,10 +30,10 @@ import About from "./components/about/About";
 import News from "./components/news/News";
 import PlanetInfo from "./components/planetinfo/PlanetInfo";
 import StarfieldBackground from "./components/common/StarfieldBackground";
-import { lightTheme, darkTheme } from "./theme";
+import { lightTheme, darkTheme } from "./theme.jsx";
 import { dataApi } from "./api";
 import { TABLE_NAMES } from "./constants";
-import { sanitizeInput, validateTableName } from "./utils/sanitize";
+import { sanitizeInput, validateTableName } from "./utils/sanitize.jsx";
 
 function App() {
   const [selectedTab, setSelectedTab] = useState(0);

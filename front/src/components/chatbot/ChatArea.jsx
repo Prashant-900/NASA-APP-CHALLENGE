@@ -3,11 +3,11 @@ import { Box, Paper, IconButton, Typography, TextField, FormControl, InputLabel,
 import { Close, Send } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { chatApi } from '../../api';
-import { addMessage, updateMessage, addQueryResponse, getNextMessageId } from '../../store/chatStore';
-import { useChatMessages } from '../../hooks';
+import { addMessage, updateMessage, addQueryResponse, getNextMessageId } from '../../store/chatStore.jsx';
+import { useChatMessages } from '../../hooks/index.jsx';
 import MarkdownRenderer from '../common/MarkdownRenderer';
-import { TABLE_NAMES, TABLE_LABELS } from '../../constants';
-import { sanitizeInput, validateTableName } from '../../utils/sanitize';
+import { TABLE_NAMES, TABLE_LABELS } from '../../constants/index.jsx';
+import { sanitizeInput, validateTableName } from '../../utils/sanitize.jsx';
 
 const ChatArea = forwardRef(({ isOpen, onClose, currentTable, onOpenNewTab, scrollToQuery }, ref) => {
   const messages = useChatMessages();

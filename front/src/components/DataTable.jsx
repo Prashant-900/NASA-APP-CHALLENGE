@@ -4,9 +4,9 @@ import {
   TableRow, Paper, CircularProgress, Box,
   TablePagination
 } from '@mui/material';
-import { useTableData } from '../hooks';
-import { validateRowData, sanitizeText } from '../utils';
-import { PAGINATION } from '../constants';
+import { useTableData } from '../hooks/index.jsx';
+import { validateRowData, sanitizeText } from '../utils/index.jsx';
+import { PAGINATION } from '../constants/index.jsx';
 
 function DataTable({ tableName, searchTerm, searchColumn, onRowClick }) {
   const [page, setPage] = useState(0);

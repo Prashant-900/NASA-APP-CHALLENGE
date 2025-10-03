@@ -37,7 +37,7 @@ def predict_data():
         # Read file based on extension
         file_ext = filename.rsplit('.', 1)[1].lower()
         if file_ext == 'csv':
-            data = pd.read_csv(filepath, on_bad_lines='skip')
+            data = pd.read_csv(filepath,on_bad_lines="skip")
         else:  # xlsx or xls
             data = pd.read_excel(filepath)
         
@@ -115,7 +115,12 @@ def predict_manual():
                 'koi_score', 'koi_period', 'koi_depth', 'koi_prad',
                 'koi_teq', 'koi_insol', 'koi_model_snr', 'koi_steff', 'koi_slogg', 'koi_srad'
             ]
-        else:  # k2 and toi
+        elif model_type == 'toi':
+            required_features = [
+                'pl_eqt', 'pl_tranmid_snr', 'st_tmag', 'pl_orbper_snr', 'pl_trandurherr2',
+                'st_dist', 'pl_insol', 'depth_mag_ratio', 'pl_tranmid', 'dec', 'pl_orbper', 'pl_rade'
+            ]
+        else:  # k2
             required_features = ['pl_orbper', 'pl_rade', 'st_teff', 'st_rad', 'st_mass', 'st_logg', 'sy_dist', 'sy_vmag', 'sy_kmag', 'sy_gaiamag']
         
         # Validate required features
@@ -137,8 +142,8 @@ def predict_manual():
             except (ValueError, TypeError):
                 return jsonify({'error': f'Invalid value for {feature}: must be a number'}), 400
         
-        # Add optional features for Kepler model
-        if model_type == 'kepler':
+        # Add optional features for Kepler and TOI models
+        if model_type in ['kepler', 'toi']:
             optional_features = features.get('optional_features', {})
             for feature, value in optional_features.items():
                 if value and str(value).strip():
@@ -174,8 +179,8 @@ def predict_manual():
         elif hasattr(prediction, '__iter__') and not isinstance(prediction, str):
             prediction = list(prediction)[0] if len(list(prediction)) > 0 else 'UNKNOWN'
         
-        # For Kepler model, return string prediction; for others, convert to boolean
-        if model_type == 'kepler':
+        # For Kepler and TOI models, return string prediction; for K2, convert to boolean
+        if model_type in ['kepler', 'toi']:
             result_prediction = str(prediction)
         else:
             result_prediction = bool(prediction)

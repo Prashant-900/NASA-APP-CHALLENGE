@@ -2,7 +2,7 @@ import React from 'react';
 import { Paper, Typography, Alert, Divider } from '@mui/material';
 import { dataApi } from '../../api';
 import { TABLE_NAMES } from '../../constants';
-import { PREDICTION_CONSTANTS } from '../../constants/predict';
+import { PREDICTION_CONSTANTS } from '../../constants/predict.jsx';
 import FileUploadSection from './FileUploadSection';
 import ManualInputSection from './ManualInputSection';
 import ResultsSection from './ResultsSection';
@@ -20,6 +20,9 @@ const Predict = ({ persistentState = {}, onStateChange, onViewPlanetInfo }) => {
   const getDefaultFeaturesForModel = (model) => {
     if (model === TABLE_NAMES.KEPLER) {
       return PREDICTION_CONSTANTS.DEFAULT_KEPLER_FEATURES;
+    }
+    if (model === TABLE_NAMES.TOI) {
+      return PREDICTION_CONSTANTS.DEFAULT_TOI_FEATURES;
     }
     return PREDICTION_CONSTANTS.DEFAULT_K2_FEATURES;
   };
@@ -75,9 +78,14 @@ const Predict = ({ persistentState = {}, onStateChange, onViewPlanetInfo }) => {
   };
 
   const handleManualPredict = async (optionalFeatures = null) => {
-    const requiredFeatures = modelType === TABLE_NAMES.KEPLER 
-      ? PREDICTION_CONSTANTS.KEPLER_TOP_FEATURES
-      : PREDICTION_CONSTANTS.K2_REQUIRED_FEATURES;
+    let requiredFeatures;
+    if (modelType === TABLE_NAMES.KEPLER) {
+      requiredFeatures = PREDICTION_CONSTANTS.KEPLER_TOP_FEATURES;
+    } else if (modelType === TABLE_NAMES.TOI) {
+      requiredFeatures = PREDICTION_CONSTANTS.TOI_REQUIRED_FEATURES;
+    } else {
+      requiredFeatures = PREDICTION_CONSTANTS.K2_REQUIRED_FEATURES;
+    }
       
     const emptyFields = requiredFeatures.filter(
       field => !manualFeatures[field] || manualFeatures[field].toString().trim() === ''
@@ -96,8 +104,8 @@ const Predict = ({ persistentState = {}, onStateChange, onViewPlanetInfo }) => {
         type: modelType
       };
       
-      // Add optional features for Kepler
-      if (modelType === TABLE_NAMES.KEPLER && optionalFeatures) {
+      // Add optional features for Kepler and TOI
+      if ((modelType === TABLE_NAMES.KEPLER || modelType === TABLE_NAMES.TOI) && optionalFeatures) {
         requestData.features = {
           ...manualFeatures,
           optional_features: optionalFeatures
