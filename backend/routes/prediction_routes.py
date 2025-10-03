@@ -6,7 +6,7 @@ import time
 from werkzeug.utils import secure_filename
 from k2_wrapper import predict as k2_predict
 from toi_wrapper import predict as toi_predict
-from cum_wrapper import predict as cum_predict
+from kepler_wrapper import predict as kepler_predict
 
 prediction_bp = Blueprint('prediction', __name__)
 
@@ -37,7 +37,7 @@ def predict_data():
         # Read file based on extension
         file_ext = filename.rsplit('.', 1)[1].lower()
         if file_ext == 'csv':
-            data = pd.read_csv(filepath, on_bad_lines='skip')
+            data = pd.read_csv(filepath,on_bad_lines="skip",comment='#')
         else:  # xlsx or xls
             data = pd.read_excel(filepath)
         
@@ -46,10 +46,20 @@ def predict_data():
             predictions = k2_predict(data)
         elif model_type == 'toi':
             predictions = toi_predict(data)
-        elif model_type == 'cum':
-            predictions = cum_predict(data)
+        elif model_type == 'kepler':
+            predictions = kepler_predict(data)
         else:
             return jsonify({'error': f'Model type "{model_type}" not supported'}), 400
+        
+        # Handle prediction result for error strings
+        if isinstance(predictions, str):  # Error message
+            os.remove(filepath)  # Clean up uploaded file
+            return jsonify({
+                'predictions': [],
+                'model_type': model_type,
+                'rows_processed': len(data),
+                'error': predictions
+            })
         
         # Clean up uploaded file
         os.remove(filepath)
@@ -99,11 +109,28 @@ def predict_manual():
         features = data.get('features', {})
         model_type = data.get('type', 'k2')
         
-        # Required features for all models
-        required_features = ['pl_orbper', 'pl_rade', 'st_teff', 'st_rad', 'st_mass', 'st_logg', 'sy_dist', 'sy_vmag', 'sy_kmag', 'sy_gaiamag']
+        # Get required features based on model type
+        if model_type == 'kepler':
+            required_features = [
+                'koi_score', 'koi_period', 'koi_depth', 'koi_prad',
+                'koi_teq', 'koi_insol', 'koi_model_snr', 'koi_steff', 'koi_slogg', 'koi_srad'
+            ]
+        elif model_type == 'toi':
+            required_features = [
+                'pl_eqt', 'pl_tranmid_snr', 'st_tmag', 'pl_orbper_snr', 'pl_trandurherr2',
+                'st_dist', 'pl_insol', 'depth_mag_ratio', 'pl_tranmid', 'dec', 'pl_orbper', 'pl_rade'
+            ]
+        else:  # k2
+            required_features = ['pl_orbper', 'pl_rade', 'st_teff', 'st_rad', 'st_mass', 'st_logg', 'sy_dist', 'sy_vmag', 'sy_kmag', 'sy_gaiamag']
         
         # Validate required features
-        missing_features = [f for f in required_features if f not in features or not features[f]]
+        missing_features = []
+        for f in required_features:
+            if f not in features:
+                missing_features.append(f)
+            elif not features[f] or str(features[f]).strip() == '':
+                missing_features.append(f)
+        
         if missing_features:
             return jsonify({'error': f'Missing required features: {missing_features}'}), 400
         
@@ -115,6 +142,16 @@ def predict_manual():
             except (ValueError, TypeError):
                 return jsonify({'error': f'Invalid value for {feature}: must be a number'}), 400
         
+        # Add optional features for Kepler and TOI models
+        if model_type in ['kepler', 'toi']:
+            optional_features = features.get('optional_features', {})
+            for feature, value in optional_features.items():
+                if value and str(value).strip():
+                    try:
+                        feature_data[feature] = [float(value)]
+                    except (ValueError, TypeError):
+                        pass  # Skip invalid optional features
+        
         df = pd.DataFrame(feature_data)
         
         # Predict based on model type
@@ -122,23 +159,34 @@ def predict_manual():
             prediction = k2_predict(df)
         elif model_type == 'toi':
             prediction = toi_predict(df)
-        elif model_type == 'cum':
-            prediction = cum_predict(df)
+        elif model_type == 'kepler':
+            prediction = kepler_predict(df)
         else:
             return jsonify({'error': f'Model type "{model_type}" not supported'}), 400
         
         # Handle prediction result
         if isinstance(prediction, str):  # Error message
-            return jsonify({'error': prediction}), 400
+            return jsonify({
+                'predictions': None,
+                'model_type': model_type,
+                'rows_processed': 1,
+                'error': prediction
+            })
         
-        # Convert to boolean if it's a numpy array
+        # Handle prediction result
         if hasattr(prediction, 'tolist'):
-            prediction = prediction.tolist()[0] if len(prediction) > 0 else False
+            prediction = prediction.tolist()[0] if len(prediction) > 0 else 'UNKNOWN'
         elif hasattr(prediction, '__iter__') and not isinstance(prediction, str):
-            prediction = list(prediction)[0] if len(list(prediction)) > 0 else False
+            prediction = list(prediction)[0] if len(list(prediction)) > 0 else 'UNKNOWN'
+        
+        # For Kepler and TOI models, return string prediction; for K2, convert to boolean
+        if model_type in ['kepler', 'toi']:
+            result_prediction = str(prediction)
+        else:
+            result_prediction = bool(prediction)
         
         return jsonify({
-            'predictions': bool(prediction),
+            'predictions': result_prediction,
             'model_type': model_type,
             'rows_processed': 1
         })

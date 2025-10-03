@@ -1,0 +1,3 @@
+pl_eqt,pl_tranmid_snr,st_tmag,pl_orbper_snr,pl_trandurherr2,st_dist,pl_insol,depth_mag_ratio,pl_tranmid,dec,pl_orbper,pl_rade,exoplanet_prediction
+1500.0,15.2,12.5,25.8,0.05,150.0,2.5,0.001,2458000.0,45.5,10.5,1.2,FALSE POSITIVE
+800.0,12.1,11.8,18.5,0.08,200.0,1.8,0.002,2458100.0,-30.2,25.8,0.8,FALSE POSITIVE

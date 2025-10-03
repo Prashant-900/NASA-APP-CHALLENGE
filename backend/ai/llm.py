@@ -3,6 +3,7 @@ from typing import Dict, Any, List
 from .config import Config
 from .plot_tools import execute_plot_code, execute_query_dataframe, generate_plot_code
 from .web_search import WebSearchTool
+from .column_info import get_column_info
 import json
 import re
 import pandas as pd
@@ -16,7 +17,8 @@ class GeminiLLM:
         self.tools = {
             'execute_sql': self._execute_sql_tool,
             'web_search': self._web_search_tool,
-            'plot_graph': self._plot_graph_tool
+            'plot_graph': self._plot_graph_tool,
+            'get_columns': self._get_columns_tool
         }
     
     def _execute_sql_tool(self, query: str, db) -> Dict[str, Any]:
@@ -55,17 +57,34 @@ class GeminiLLM:
         """Generate plot from data"""
         try:
             df = pd.DataFrame(data)
-            plot_json = execute_plot_code(plot_code, df)
+            plot_html = execute_plot_code(plot_code, df)
             return {
                 "success": True,
-                "plot": plot_json,
+                "plot": plot_html,
                 "error": None
             }
         except Exception as e:
             return {
                 "success": False,
-                "plot": {},
+                "plot": "",
                 "error": str(e)
+            }
+    
+    def _get_columns_tool(self, table: str) -> Dict[str, Any]:
+        """Get detailed column information for a table"""
+        try:
+            column_info = get_column_info(table)
+            return {
+                "success": True,
+                "columns": column_info['columns'],
+                "descriptions": column_info['descriptions'],
+                "count": column_info['count']
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e),
+                "columns": []
             }
     
     def process_with_tools(self, user_message: str, table: str, db) -> dict:
@@ -85,20 +104,31 @@ Available columns: {', '.join(columns)}
 
 User request: {user_message}
 
+IMPORTANT RULES:
+- Never use emojis in responses
+- If user asks for "plot", "graph", "chart", "histogram", "scatter", "visualization" - ALWAYS use plot_graph
+- If user asks for "relation", "relationship", "correlation" between columns - use plot_graph with scatter plot
+- If user mentions specific column names and wants to see them plotted - use plot_graph
+- Only show raw data if user specifically asks for "data", "table", "records", "list"
+
 Process this request step by step:
 1. If user asks about a term/concept you don't know, use web_search to find information
 2. If user wants to plot/visualize data, first execute SQL to get data, then create plot
 3. If user wants to see data, execute SQL query
 4. Always provide AI response explaining what you did
 
+For plots, use this format for plot_code:
+- Histogram: fig = px.histogram(data, x='column_name', nbins=30, title='Title')
+- Scatter: fig = px.scatter(data, x='col1', y='col2', title='Title')
+- Log scale: add log_y=True for log scale on Y axis
+
 Respond in JSON format:
 {{
     "steps": [
-        {{"action": "web_search", "query": "term to search", "reasoning": "why search needed"}},
         {{"action": "execute_sql", "query": "SELECT ...", "reasoning": "why"}},
         {{"action": "plot_graph", "code": "fig = px.histogram(...)", "reasoning": "why"}}
     ],
-    "response": "AI explanation of results including search findings"
+    "response": "AI explanation of results"
 }}"""
 
             # Get LLM response
@@ -111,14 +141,14 @@ Respond in JSON format:
                     response_text = response_text.replace('```json', '').replace('```', '').strip()
                 
                 plan = json.loads(response_text)
-            except:
+            except Exception as e:
                 # Fallback if JSON parsing fails
                 return self._fallback_processing(user_message, table, db, columns)
             
             # Execute planned steps
             results = {"data": None, "plot": None, "ai_response": "", "search_info": ""}
             
-            for step in plan.get("steps", []):
+            for i, step in enumerate(plan.get("steps", [])):
                 action = step.get("action")
                 
                 if action == "web_search":
@@ -201,22 +231,47 @@ Respond in JSON format:
                         }
             
             # Handle plotting requests
-            if any(word in message_lower for word in ['plot', 'hist', 'graph', 'chart']):
-                sql_query = self._generate_simple_sql(user_message, table, columns)
+            if any(word in message_lower for word in ['plot', 'hist', 'graph', 'chart', 'scatter', 'visualization', 'relation']):
+                # Extract column names from message
+                mentioned_cols = [col for col in columns if col.lower() in message_lower]
+                
+                if mentioned_cols:
+                    # Build SQL query for mentioned columns
+                    if len(mentioned_cols) == 1:
+                        sql_query = f"SELECT {mentioned_cols[0]} FROM {table} WHERE {mentioned_cols[0]} IS NOT NULL LIMIT 1000"
+                    else:
+                        col_list = ', '.join(mentioned_cols)
+                        where_clause = ' AND '.join([f"{col} IS NOT NULL" for col in mentioned_cols])
+                        sql_query = f"SELECT {col_list} FROM {table} WHERE {where_clause} LIMIT 1000"
+                else:
+                    # Default query
+                    sql_query = f"SELECT * FROM {table} LIMIT 1000"
+                
                 sql_result = self._execute_sql_tool(sql_query, db)
                 
                 if sql_result["success"] and sql_result["data"]:
                     plot_code = generate_plot_code(user_message, columns)
                     plot_result = self._plot_graph_tool(plot_code, sql_result["data"])
                     
-                    return {
-                        "response": f"Generated plot for {user_message}",
-                        "data": None,
-                        "plot": plot_result["plot"] if plot_result["success"] else None,
-                        "response_type": "query_with_data",
-                        "show_in_query_tab": True,
-                        "error": None
-                    }
+                    if plot_result["success"] and plot_result["plot"]:
+                        return {
+                            "response": f"Generated plot for {user_message}",
+                            "data": None,
+                            "plot": plot_result["plot"],
+                            "response_type": "query_with_data",
+                            "show_in_query_tab": True,
+                            "error": None
+                        }
+                    else:
+                        # If plot failed, show data instead
+                        return {
+                            "response": "Could not generate plot, showing data instead",
+                            "data": sql_result["data"][:50],  # Limit to 50 rows
+                            "plot": None,
+                            "response_type": "query_with_data",
+                            "show_in_query_tab": True,
+                            "error": None
+                        }
             
             # Handle data display requests
             elif any(word in message_lower for word in ['show', 'display', 'list', 'top']):

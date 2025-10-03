@@ -10,6 +10,6 @@ DB_CONFIG = {
     "port": os.getenv('DB_PORT', '5432')
 }
 
-ALLOWED_TABLES = ['k2', 'toi', 'cum']
+ALLOWED_TABLES = ['k2', 'toi', 'kepler']
 
 engine = create_engine(f"postgresql://{DB_CONFIG['user']}:{DB_CONFIG['password']}@{DB_CONFIG['host']}:{DB_CONFIG['port']}/{DB_CONFIG['dbname']}")
