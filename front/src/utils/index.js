@@ -1,1 +1,3 @@
-export { sanitizeText, validateRowData, safeArrayAccess } from './sanitize';
+import { sanitizeText, validateRowData, safeArrayAccess } from './sanitize.js';
+
+export { sanitizeText, validateRowData, safeArrayAccess };
