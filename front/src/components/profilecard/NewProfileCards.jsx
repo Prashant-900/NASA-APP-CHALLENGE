@@ -3,61 +3,61 @@ import { Box, Card, CardContent, Typography, Avatar, IconButton } from '@mui/mat
 import { motion } from 'framer-motion';
 import LinkedInIcon from '@mui/icons-material/LinkedIn';
 import GitHubIcon from '@mui/icons-material/GitHub';
-import TwitterIcon from '@mui/icons-material/Twitter';
+import InstagramIcon from '@mui/icons-material/Instagram';
 
 const teamMembers = [
   {
     name: 'Kumar Saurav',
-    role: 'Lead Data Scientist',
+    role: 'Web Developer',
     image: 'https://media.licdn.com/dms/image/v2/D5603AQFoZwhH1K_ZSQ/profile-displayphoto-shrink_400_400/B56ZRFtlfkHoAg-/0/1736336367077?e=1762387200&v=beta&t=mDLbh3YNPP_OfMlKUZGuH2R67Sfd_a3SHzzBcRXrtpA',
-    linkedin: 'https://linkedin.com',
-    github: 'https://github.com',
-    twitter: 'https://twitter.com',
-    description: 'Expert in exoplanet detection algorithms and machine learning model development.'
+    linkedin: 'https://www.linkedin.com/in/kumar-saurav-417508323/',
+    github: 'https://github.com/Saurav10codes',
+    twitter: 'https://instagram.com/saurav10101010',
+    description: 'Designed the Website and implemented user-friendly interfaces for data visualization.'
   },
   {
     name: 'Nikhil Prakash',
-    role: 'Astrophysicist',
-    image: 'https://media.licdn.com/dms/image/v2/D4E03AQGXhCspUkmEXw/profile-displayphoto-shrink_400_400/profile-displayphoto-shrink_400_400/0/1725435487029?e=1762387200&v=beta&t=zrShjRdhz4FF97xY9fd-IrUqRcSobKj744tq-hR6zLo',
-    linkedin: 'https://linkedin.com',
-    github: 'https://github.com',
-    twitter: 'https://twitter.com',
+    role: 'Feature Extractor',
+    image: 'https://i.ibb.co/1Jr2sbQL/Whats-App-Image-2025-10-04-at-01-40-09-68517d96.jpg',
+    linkedin: 'https://www.linkedin.com/in/nikhil-prakash-509869326/',
+    github: 'https://github.com/Coding-yeager',
+    twitter: 'https://instagram.com/nikhilprakash7684',
     description: 'Specializes in analyzing stellar data and characterizing exoplanetary systems.'
   },
   {
     name: 'Hardik Kushwaha',
-    role: 'Full Stack Developer',
-    image: 'https://media.licdn.com/dms/image/v2/D4E03AQH_YxrYkaQ_jQ/profile-displayphoto-scale_400_400/B4EZhAdTMIGYAo-/0/1753428080891?e=1762387200&v=beta&t=0khoqQ9cQBQJ9xD-ggJ7XdSZXeeRVseynm3BWKz_hoM',
-    linkedin: 'https://linkedin.com',
-    github: 'https://github.com',
-    twitter: 'https://twitter.com',
+    role: 'Data Analyst',
+    image: 'https://i.ibb.co/Q7z5LkLT/Whats-App-Image-2025-10-03-at-18-55-40-f183b1a7.jpg',
+    linkedin: 'https://www.linkedin.com/in/hardik-kushwah-54705a377/',
+    github: 'https://github.com/Hardik-2211',
+    twitter: 'https://www.instagram.com/sassy_boy_hunk',
     description: 'Builds robust applications for processing and visualizing astronomical data.'
   },
   {
     name: 'Basil Khan',
-    role: 'UI/UX Designer',
+    role: 'Model Fine Tuner',
     image: 'https://media.licdn.com/dms/image/v2/D5603AQG-2Nf--z0D9Q/profile-displayphoto-shrink_400_400/profile-displayphoto-shrink_400_400/0/1723812389366?e=1762387200&v=beta&t=dFbH13nthTHWgfhGIbKXjJt6DtEFqkROyOkKrOu_HZk',
-    linkedin: 'https://linkedin.com',
-    github: 'https://github.com',
-    twitter: 'https://twitter.com',
-    description: 'Creates intuitive interfaces for exploring space data and discoveries.'
+    linkedin: 'https://www.linkedin.com/in/basil-khan-b7714b321/',
+    github: 'https://github.com/Basilkhan1718',
+    twitter: 'https://www.instagram.com/basilkhan78/',
+    description: 'Fine Tunes machine learning models for enhanced exoplanet detection accuracy.'
   },
   {
     name: 'Prashant Suthar',
-    role: 'Data Engineer',
-    image: 'https://media.licdn.com/dms/image/v2/D4D03AQFF--uTto9hEA/profile-displayphoto-shrink_800_800/profile-displayphoto-shrink_800_800/0/1723779183427?e=1762387200&v=beta&t=b1TD74ZmFZ0c_6uS15OahAaos8exomY7JrAguUCGYc4',
+    role: 'RAG Specialist',
+    image: 'https://i.ibb.co/zVmY2Wbc/Whats-App-Image-2025-10-04-at-01-32-53-203a39c0.jpg',
     linkedin: 'https://linkedin.com',
-    github: 'https://github.com',
-    twitter: 'https://twitter.com',
-    description: 'Manages data pipelines and infrastructure for large-scale astronomical datasets.'
+    github: 'https://github.com/Prashant-900',
+    twitter: 'https://instagram.com/ehhbefr',
+    description: 'Manages data pipelines for RAG systems and infrastructure for large-scale astronomical datasets.'
   },
   {
     name: 'Aryan Garg',
-    role: 'Research Scientist',
-    image: 'https://media.licdn.com/dms/image/v2/D4D03AQFF--uTto9hEA/profile-displayphoto-shrink_800_800/profile-displayphoto-shrink_800_800/0/1723779183427?e=1762387200&v=beta&t=b1TD74ZmFZ0c_6uS15OahAaos8exomY7JrAguUCGYc4',
-    linkedin: 'https://linkedin.com',
-    github: 'https://github.com',
-    twitter: 'https://twitter.com',
+    role: 'Statistics',
+    image: 'https://i.ibb.co/8LQChqrF/20250412-172355.jpg',
+    linkedin: 'https://www.linkedin.com/in/aryan-garg-jeezzzzzz/',
+    github: 'https://github.com/ar-garg',
+    twitter: 'https://www.instagram.com/aryan_.garg_',
     description: 'Focuses on statistical analysis of exoplanet detection methods.'
   }
 ];
@@ -149,10 +149,10 @@ const ProfileCard = ({ member }) => {
               target="_blank"
               sx={{ 
                 color: 'text.secondary',
-                '&:hover': { color: '#1DA1F2' }
+                '&:hover': { color: '#E4405F' }
               }}
             >
-              <TwitterIcon />
+              <InstagramIcon />
             </IconButton>
           </Box>
         </CardContent>
