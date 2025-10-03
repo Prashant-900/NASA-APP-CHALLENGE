@@ -37,7 +37,7 @@ def predict_data():
         # Read file based on extension
         file_ext = filename.rsplit('.', 1)[1].lower()
         if file_ext == 'csv':
-            data = pd.read_csv(filepath,on_bad_lines="skip")
+            data = pd.read_csv(filepath,on_bad_lines="skip",comment='#')
         else:  # xlsx or xls
             data = pd.read_excel(filepath)
         
