@@ -90,6 +90,8 @@ function Planet3D({ planetData }) {
     canvas.style.border = "none";
     canvas.style.outline = "none";
     canvas.style.verticalAlign = "top";
+    canvas.style.width = "100%";
+    canvas.style.height = "100%";
 
     mount.appendChild(canvas);
 
@@ -341,6 +343,7 @@ function Planet3D({ planetData }) {
         outline: "none",
         overflow: "hidden",
         lineHeight: 0,
+        boxSizing: "border-box",
       }}
     />
   );

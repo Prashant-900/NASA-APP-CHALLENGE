@@ -1,8 +1,8 @@
 import React from "react";
 import { Box, Typography, Container, Paper } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
-import NewProfileCards from "../profilecard/NewProfileCards.js";
-import StarfieldBackground from "../common/StarfieldBackground.js";
+import NewProfileCards from "../profilecard/NewProfileCards.jsx";
+import StarfieldBackground from "../common/StarfieldBackground.jsx";
 const About = () => {
   const theme = useTheme();
   

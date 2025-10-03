@@ -314,7 +314,6 @@ function Home() {
             transition={{ duration: 0.5, ease: "easeInOut" }}
             style={{
               width: "60%",
-              paddingLeft: "24px",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
