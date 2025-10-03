@@ -1,0 +1,132 @@
+* {
+  cursor: none !important;
+}
+
+.cursor-wrapper {
+  position: fixed;
+  pointer-events: none;
+  z-index: 9999;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+}
+
+.star-core {
+  position: fixed;
+  width: 4px;
+  height: 4px;
+  background: #fff;
+  border-radius: 50%;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  box-shadow: 
+    0 0 12px 3px rgba(255, 255, 255, 1),
+    0 0 20px 6px rgba(70, 131, 255, 0.8),
+    0 0 30px 8px rgba(59, 255, 255, 0.6);
+  transform: translate(-50%, -50%);
+  transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
+  z-index: 10000;
+}
+
+.trail-segment {
+  position: absolute;
+  height: 4px;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 1) 0%,
+    rgba(70, 131, 255, 0.8) 50%,
+    rgba(59, 255, 255, 0) 100%
+  );
+  transform-origin: left center;
+  mix-blend-mode: screen;
+  filter: blur(2px);
+  box-shadow: 
+    0 0 12px rgba(255, 255, 255, 0.8),
+    0 0 18px rgba(70, 131, 255, 0.6),
+    0 0 24px rgba(59, 255, 255, 0.5);
+  animation: fadeTrail 100ms linear forwards;
+}
+
+@keyframes fadeTrail {
+  from { opacity: 0.8; }
+  to { opacity: 0; }
+}
+
+.trail-particle::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.5) 0%,
+    rgba(70, 131, 255, 0.3) 60%,
+    transparent 100%
+  );
+  box-shadow: 
+    0 0 4px 1px rgba(255, 255, 255, 0.6),
+    0 0 8px 4px rgba(70, 131, 255, 0.4),
+    0 0 15px 8px rgba(59, 255, 255, 0.2);
+}
+
+/* Sparkles with enhanced effect */
+.sparkle {
+  position: absolute;
+  pointer-events: none;
+  z-index: 9997;
+  animation: sparkleEffect 600ms ease-out;
+  mix-blend-mode: screen;
+}
+
+@keyframes sparkleEffect {
+  0% {
+    transform: translate(-50%, -50%) scale(0) rotate(0deg);
+    opacity: 1;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1) rotate(180deg);
+    opacity: 0.8;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(0) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+@keyframes sparkle {
+  0% {
+    transform: scale(0) rotate(0deg);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1) rotate(180deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+/* Interactive state */
+.shooting-star.interactive .star-core {
+  transform: translate(-50%, -50%) scale(1.5);
+  box-shadow: 
+    0 0 15px 3px rgba(255, 255, 255, 0.9),
+    0 0 25px 7px rgba(70, 131, 255, 0.7),
+    0 0 35px 12px rgba(59, 255, 255, 0.5);
+}
+
+/* Click effect */
+.shooting-star.clicked .star-core {
+  transform: translate(-50%, -50%) scale(0.8);
+  box-shadow: 
+    0 0 8px 1px rgba(255, 255, 255, 0.7),
+    0 0 15px 3px rgba(70, 131, 255, 0.5),
+    0 0 25px 8px rgba(59, 255, 255, 0.3);
+}
