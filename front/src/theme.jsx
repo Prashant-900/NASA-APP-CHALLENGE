@@ -1,50 +1,52 @@
 import { createTheme } from '@mui/material/styles';
 
+const ubuntuFontFamily = "'Ubuntu', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif";
+
 const shapeOverrides = {
   shape: {
     borderRadius: 0,
   },
   typography: {
-    fontFamily: "'Ubuntu', sans-serif",
+    fontFamily: ubuntuFontFamily,
     h1: {
-      fontFamily: "'Ubuntu', sans-serif",
+      fontFamily: ubuntuFontFamily,
     },
     h2: {
-      fontFamily: "'Ubuntu', sans-serif",
+      fontFamily: ubuntuFontFamily,
     },
     h3: {
-      fontFamily: "'Ubuntu', sans-serif",
+      fontFamily: ubuntuFontFamily,
     },
     h4: {
-      fontFamily: "'Ubuntu', sans-serif",
+      fontFamily: ubuntuFontFamily,
     },
     h5: {
-      fontFamily: "'Ubuntu', sans-serif",
+      fontFamily: ubuntuFontFamily,
     },
     h6: {
-      fontFamily: "'Ubuntu', sans-serif",
+      fontFamily: ubuntuFontFamily,
     },
     subtitle1: {
-      fontFamily: "'Ubuntu', sans-serif",
+      fontFamily: ubuntuFontFamily,
     },
     subtitle2: {
-      fontFamily: "'Ubuntu', sans-serif",
+      fontFamily: ubuntuFontFamily,
     },
     body1: {
-      fontFamily: "'Ubuntu', sans-serif",
+      fontFamily: ubuntuFontFamily,
     },
     body2: {
-      fontFamily: "'Ubuntu', sans-serif",
+      fontFamily: ubuntuFontFamily,
     },
     button: {
-      fontFamily: "'Ubuntu', sans-serif",
+      fontFamily: ubuntuFontFamily,
       textTransform: 'none',
     },
     caption: {
-      fontFamily: "'Ubuntu', sans-serif",
+      fontFamily: ubuntuFontFamily,
     },
     overline: {
-      fontFamily: "'Ubuntu', sans-serif",
+      fontFamily: ubuntuFontFamily,
     },
   },
 };
@@ -88,9 +90,16 @@ const lightTheme = createTheme({
   components: {
     MuiCssBaseline: {
       styleOverrides: {
+        '@import': "url('https://fonts.googleapis.com/css2?family=Ubuntu:wght@300;400;500;700&display=swap')",
         ':root': {
           '--bg-paper': '#ffffff',
           '--border-color': '#e0e0e0',
+        },
+        'html, body, #root': {
+          fontFamily: ubuntuFontFamily,
+        },
+        '*': {
+          fontFamily: `${ubuntuFontFamily} !important`,
         },
         '*::-webkit-scrollbar': {
           width: '8px',
@@ -150,9 +159,16 @@ const darkTheme = createTheme({
   components: {
     MuiCssBaseline: {
       styleOverrides: {
+        '@import': "url('https://fonts.googleapis.com/css2?family=Ubuntu:wght@300;400;500;700&display=swap')",
         ':root': {
           '--bg-paper': '#000000',
           '--border-color': '#333333',
+        },
+        'html, body, #root': {
+          fontFamily: ubuntuFontFamily,
+        },
+        '*': {
+          fontFamily: `${ubuntuFontFamily} !important`,
         },
         '*::-webkit-scrollbar': {
           width: '8px',

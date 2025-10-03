@@ -1,5 +1,9 @@
 module.exports = {
   theme: {
+    fontFamily: {
+      'sans': ['Ubuntu', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Oxygen', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', 'sans-serif'],
+      'ubuntu': ['Ubuntu', 'sans-serif'],
+    },
     extend: {
       animation: {
         'star-movement-bottom': 'star-movement-bottom linear infinite alternate',
