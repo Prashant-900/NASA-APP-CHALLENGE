@@ -18,7 +18,7 @@ const ResultsSection = ({ results, inputData, modelType, onViewPlanetInfo }) => 
         <Chip label={`Model: ${results.model_type.toUpperCase()}`} sx={{ mr: 1 }} />
         <Chip label={`Rows: ${results.rows_processed}`} sx={{ mr: 1 }} />
         <Chip 
-          label={`Exoplanets: ${Array.isArray(results.predictions) ? results.predictions.filter(p => p).length : (results.predictions ? 1 : 0)}`} 
+          label={`Exoplanets: ${Array.isArray(results.predictions) ? results.predictions.filter(p => typeof p === 'string' ? p !== 'FALSE POSITIVE' : p).length : (results.predictions && results.predictions !== 'FALSE POSITIVE' ? 1 : 0)}`} 
           color="success" 
         />
       </Box>
@@ -37,7 +37,9 @@ const ResultsSection = ({ results, inputData, modelType, onViewPlanetInfo }) => 
               results.predictions.slice(0, 100).map((prediction, index) => (
                 <TableRow key={index}>
                   <TableCell>{index + 1}</TableCell>
-                  <TableCell>{prediction ? 'Exoplanet' : 'Not Exoplanet'}</TableCell>
+                  <TableCell>
+                    {typeof prediction === 'string' ? prediction : (prediction ? 'Exoplanet' : 'Not Exoplanet')}
+                  </TableCell>
                   <TableCell>
                     <IconButton 
                       size="small" 
@@ -64,7 +66,9 @@ const ResultsSection = ({ results, inputData, modelType, onViewPlanetInfo }) => 
             ) : (
               <TableRow>
                 <TableCell>1</TableCell>
-                <TableCell>{results.predictions ? 'Exoplanet' : 'Not Exoplanet'}</TableCell>
+                <TableCell>
+                  {typeof results.predictions === 'string' ? results.predictions : (results.predictions ? 'Exoplanet' : 'Not Exoplanet')}
+                </TableCell>
                 <TableCell>
                   <IconButton 
                     size="small" 

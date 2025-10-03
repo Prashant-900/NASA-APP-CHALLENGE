@@ -9,7 +9,7 @@ import os
 from werkzeug.utils import secure_filename
 from k2_wrapper import predict as k2_predict
 from toi_wrapper import predict as toi_predict
-from cum_wrapper import predict as cum_predict
+from backend.kepler_wrapper import predict as cum_predict
 from ai import RAGGraph
 
 app = Flask(__name__)

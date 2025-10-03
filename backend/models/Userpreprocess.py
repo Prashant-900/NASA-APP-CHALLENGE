@@ -8,17 +8,18 @@ import os
 # Relative paths
 # -------------------------------
 script_dir = os.path.dirname(os.path.abspath(__file__))  # folder of this script
-csv_input_path = os.path.join(script_dir, "user_input.csv")
-csv_output_path = os.path.join(script_dir, "user_upload_with_predictions.csv")
+# csv_input_path = os.path.join(script_dir, "user_input.csv")
+# csv_output_path = os.path.join(script_dir, "user_upload_with_predictions.csv")
 
 # -------------------------------
 # Load preprocessing objects
 # -------------------------------
-with open(os.path.join(script_dir, "cum_preprocess.pkl"), "rb") as f:
+with open(os.path.join(script_dir, "kepler_preprocess.pkl"), "rb") as f:
     objs = pickle.load(f)
 
 imputer = objs["imputer"]
 feature_names = objs["feature_names"]  # final 38 features
+print(feature_names)
 label_encoder = objs["label_encoder"]
 
 # -------------------------------

@@ -14,6 +14,11 @@ const apiClient = axios.create({
 // Request interceptor for input validation
 apiClient.interceptors.request.use(
   (config) => {
+    // Skip sanitization for FormData (file uploads)
+    if (config.data instanceof FormData) {
+      return config;
+    }
+    
     // Validate request data
     if (config.data) {
       // Ensure data is properly structured
@@ -21,16 +26,15 @@ apiClient.interceptors.request.use(
         throw new Error('Invalid request data format');
       }
       
-      // Sanitize string inputs
+      // Sanitize string inputs but preserve nested objects
       const sanitizeData = (obj) => {
         const sanitized = {};
         for (const [key, value] of Object.entries(obj)) {
           if (typeof value === 'string') {
-            // Remove potentially dangerous characters
-            sanitized[key] = value.replace(/[<>"'&]/g, '').substring(0, 1000);
-          } else if (typeof value === 'number' || typeof value === 'boolean') {
-            sanitized[key] = value;
-          } else if (value === null || value === undefined) {
+            sanitized[key] = value.substring(0, 1000);
+          } else if (typeof value === 'object' && value !== null) {
+            sanitized[key] = value; // Preserve nested objects like features
+          } else {
             sanitized[key] = value;
           }
         }
@@ -50,19 +54,10 @@ apiClient.interceptors.request.use(
 // Response interceptor for error handling
 apiClient.interceptors.response.use(
   (response) => {
-    // Validate response structure
-    if (response.data && typeof response.data === 'object') {
-      return response;
-    }
     return response;
   },
   (error) => {
-    // Don't log sensitive information
-    const safeError = {
-      message: error.message || 'Request failed',
-      status: error.response?.status || 'Unknown',
-    };
-    console.error('API Error:', safeError);
+    console.error('API Error:', error.response?.data || error.message);
     return Promise.reject(error);
   }
 );

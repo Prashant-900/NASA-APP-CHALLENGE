@@ -29,7 +29,7 @@ const FileUploadSection = ({
   return (
     <Box sx={{ mb: 3 }}>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Upload your K2, TOI, or CUM dataset (CSV/Excel) to get exoplanet predictions
+        Upload your K2, TOI, or Kepler dataset (CSV/Excel) to get exoplanet predictions
       </Typography>
       
       <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 2 }}>
@@ -65,7 +65,7 @@ const FileUploadSection = ({
           >
             <MenuItem value={TABLE_NAMES.K2}>{TABLE_NAMES.K2.toUpperCase()}</MenuItem>
             <MenuItem value={TABLE_NAMES.TOI}>{TABLE_NAMES.TOI.toUpperCase()}</MenuItem>
-            <MenuItem value={TABLE_NAMES.CUM}>{TABLE_NAMES.CUM.toUpperCase()}</MenuItem>
+            <MenuItem value={TABLE_NAMES.KEPLER}>{TABLE_NAMES.KEPLER.toUpperCase()}</MenuItem>
           </Select>
         </FormControl>
       </Box>

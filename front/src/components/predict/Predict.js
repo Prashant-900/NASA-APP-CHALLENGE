@@ -17,6 +17,13 @@ const Predict = ({ persistentState = {}, onStateChange, onViewPlanetInfo }) => {
     manualFeatures = PREDICTION_CONSTANTS.DEFAULT_MANUAL_FEATURES
   } = persistentState;
   
+  const getDefaultFeaturesForModel = (model) => {
+    if (model === TABLE_NAMES.KEPLER) {
+      return PREDICTION_CONSTANTS.DEFAULT_KEPLER_FEATURES;
+    }
+    return PREDICTION_CONSTANTS.DEFAULT_K2_FEATURES;
+  };
+  
   const updateState = (updates) => {
     onStateChange?.(updates);
   };
@@ -26,7 +33,12 @@ const Predict = ({ persistentState = {}, onStateChange, onViewPlanetInfo }) => {
   };
 
   const handleModelTypeChange = (newModelType) => {
-    updateState({ modelType: newModelType });
+    updateState({ 
+      modelType: newModelType,
+      manualFeatures: getDefaultFeaturesForModel(newModelType),
+      results: null,
+      error: ''
+    });
   };
 
   const handleUpload = async () => {
@@ -57,8 +69,12 @@ const Predict = ({ persistentState = {}, onStateChange, onViewPlanetInfo }) => {
     }
   };
 
-  const handleManualPredict = async () => {
-    const emptyFields = PREDICTION_CONSTANTS.REQUIRED_FEATURES.filter(
+  const handleManualPredict = async (optionalFeatures = null) => {
+    const requiredFeatures = modelType === TABLE_NAMES.KEPLER 
+      ? PREDICTION_CONSTANTS.KEPLER_TOP_FEATURES
+      : PREDICTION_CONSTANTS.K2_REQUIRED_FEATURES;
+      
+    const emptyFields = requiredFeatures.filter(
       field => !manualFeatures[field] || manualFeatures[field].toString().trim() === ''
     );
     
@@ -70,10 +86,20 @@ const Predict = ({ persistentState = {}, onStateChange, onViewPlanetInfo }) => {
     updateState({ loading: true, error: '' });
 
     try {
-      const response = await dataApi.predictManual({
+      const requestData = {
         features: manualFeatures,
         type: modelType
-      });
+      };
+      
+      // Add optional features for Kepler
+      if (modelType === TABLE_NAMES.KEPLER && optionalFeatures) {
+        requestData.features = {
+          ...manualFeatures,
+          optional_features: optionalFeatures
+        };
+      }
+      
+      const response = await dataApi.predictManual(requestData);
       updateState({ 
         results: {
           ...response.data,
@@ -82,7 +108,8 @@ const Predict = ({ persistentState = {}, onStateChange, onViewPlanetInfo }) => {
         }
       });
     } catch (err) {
-      updateState({ error: err.message });
+      console.error('Manual prediction error:', err);
+      updateState({ error: err.response?.data?.error || err.message });
     } finally {
       updateState({ loading: false });
     }
@@ -138,8 +165,9 @@ const Predict = ({ persistentState = {}, onStateChange, onViewPlanetInfo }) => {
       <ManualInputSection
         manualFeatures={manualFeatures}
         loading={loading}
+        modelType={modelType}
         onFeatureChange={handleFeatureChange}
-        onPredict={handleManualPredict}
+        onPredict={(optionalFeatures) => handleManualPredict(optionalFeatures)}
       />
 
       {error && (
