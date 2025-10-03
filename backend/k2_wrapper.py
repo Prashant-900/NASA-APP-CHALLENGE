@@ -7,7 +7,7 @@ import catboost
 req_col = ["pl_orbper","pl_rade","st_teff","st_rad","st_mass","st_logg","sy_dist","sy_vmag","sy_kmag","sy_gaiamag"]
 
 try:
-    model = catboost.CatBoostClassifier().load_model("models\k2.bin")
+    model = catboost.CatBoostClassifier().load_model("models/k2.bin")
 except FileNotFoundError:
     raise FileNotFoundError("K2 model file not found. Please ensure models/k2.bin exists.")
 except Exception as e:
