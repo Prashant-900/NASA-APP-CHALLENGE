@@ -16,7 +16,6 @@ import bhvid from "../../assets/blackhole.webm";
 import Page2 from "./page2";
 import Page3 from "./page3";
 import Page4 from "./page4";
-import Footer from "./Footer";
 
 import styles from './home.module.css';
 
@@ -28,7 +27,6 @@ function Home() {
   const [result, setResult] = useState(null);
   const [showResult, setShowResult] = useState(false);
   const [imageAtTop, setImageAtTop] = useState(false);
-  const [showFooter, setShowFooter] = useState(false);
   const containerRef = useRef(null);
   const isScrollingRef = useRef(false);
 
@@ -66,7 +64,14 @@ function Home() {
 
       const scrollY = container.scrollTop;
       const pageHeight = window.innerHeight;
-      const currentPage = Math.round(scrollY / pageHeight);
+      const currentPage = Math.floor(scrollY / pageHeight);
+      
+      // Allow free scrolling on Page4 (index 3) and beyond to access footer
+      if (scrollY >= pageHeight * 3) {
+        // Let natural scrolling happen on Page4 and footer
+        setImageAtTop(true);
+        return;
+      }
 
       e.preventDefault();
       isScrollingRef.current = true;
@@ -82,12 +87,11 @@ function Home() {
 
       container.scrollTo({ top: targetPage * pageHeight, behavior: "smooth" });
       setImageAtTop(targetPage > 0);
-      setShowFooter(targetPage === 3); // Show footer only on page 4 (index 3)
 
       // Increased timeout for slower scrolling (50% slower)
       setTimeout(() => {
         isScrollingRef.current = false;
-      }, 1600);
+      }, 1000);
     };
 
     // Handle touch events for mobile
@@ -106,7 +110,13 @@ function Home() {
       const diff = touchStartY - touchY;
       const scrollY = container.scrollTop;
       const pageHeight = window.innerHeight;
-      const currentPage = Math.round(scrollY / pageHeight);
+      const currentPage = Math.floor(scrollY / pageHeight);
+      
+      // Allow free scrolling on Page4 (index 3) and beyond to access footer
+      if (scrollY >= pageHeight * 3) {
+        setImageAtTop(true);
+        return;
+      }
 
       if (Math.abs(diff) > 50) {
         e.preventDefault();
@@ -126,7 +136,6 @@ function Home() {
           behavior: "smooth",
         });
         setImageAtTop(targetPage > 0);
-        setShowFooter(targetPage === 3); // Show footer only on page 4 (index 3)
 
         setTimeout(() => {
           isScrollingRef.current = false;
@@ -150,7 +159,6 @@ function Home() {
   }, []);
 
   return (
-    <>
     <Box
       ref={containerRef}
       className="home-container"
@@ -329,8 +337,6 @@ function Home() {
       <Page3 />
       <Page4 />
     </Box>
-    {showFooter && <Footer />}
-  </>
   );
 }
 
