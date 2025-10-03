@@ -19,6 +19,7 @@ import {
 } from "@mui/material";
 import { Brightness4, Brightness7, Chat } from "@mui/icons-material";
 import { motion } from "framer-motion";
+import ShootingStarCursor from './components/common/ShootingStarCursor';
 
 import DataTable from "./components/DataTable";
 import Predict from "./components/predict/Predict";
@@ -171,6 +172,7 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
+      <ShootingStarCursor />
       <Box sx={{ backgroundColor: 'background.default', height: '100vh', display: 'flex', flexDirection: 'column' }}>
         <AppBar position="static" elevation={0} sx={{ borderBottom: '1px solid', borderColor: 'grey.300', zIndex:1 }}>
           <Toolbar sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", backgroundColor: 'background.default' }}>
@@ -182,9 +184,9 @@ function App() {
               <Tab label="News" />
               <Tab label="About" />
             </Tabs>
-            <IconButton onClick={toggleDarkMode} color="primary">
+            {/* <IconButton onClick={toggleDarkMode} color="primary">
               {darkMode ? <Brightness7 /> : <Brightness4 />}
-            </IconButton>
+            </IconButton> */}
           </Toolbar>
         </AppBar>
 
@@ -259,7 +261,15 @@ function App() {
           {selectedTab === 4 && (
             <Box sx={{ position: 'relative', flex: 1, overflow: 'hidden' }}>
               <StarfieldBackground />
-              <Box sx={{ position: 'relative', zIndex: 2, height: '100%', overflow: 'auto' }}>
+              <Box sx={{ 
+                position: 'relative', 
+                zIndex: 2, 
+                height: '100%', 
+                overflow: 'auto',
+                '&::-webkit-scrollbar': { display: 'none' },
+                msOverflowStyle: 'none',
+                scrollbarWidth: 'none'
+              }}>
                 <About />
               </Box>
             </Box>

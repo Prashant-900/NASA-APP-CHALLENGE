@@ -16,6 +16,10 @@ import bhvid from "../../assets/blackhole.webm";
 import Page2 from "./page2";
 import Page3 from "./page3";
 import Page4 from "./page4";
+import Footer from "./Footer";
+
+import styles from './home.module.css';
+
 
 function Home() {
   const theme = useTheme();
@@ -24,6 +28,7 @@ function Home() {
   const [result, setResult] = useState(null);
   const [showResult, setShowResult] = useState(false);
   const [imageAtTop, setImageAtTop] = useState(false);
+  const [showFooter, setShowFooter] = useState(false);
   const containerRef = useRef(null);
   const isScrollingRef = useRef(false);
 
@@ -77,10 +82,12 @@ function Home() {
 
       container.scrollTo({ top: targetPage * pageHeight, behavior: "smooth" });
       setImageAtTop(targetPage > 0);
+      setShowFooter(targetPage === 3); // Show footer only on page 4 (index 3)
 
+      // Increased timeout for slower scrolling (50% slower)
       setTimeout(() => {
         isScrollingRef.current = false;
-      }, 600);
+      }, 1600);
     };
 
     // Handle touch events for mobile
@@ -119,10 +126,11 @@ function Home() {
           behavior: "smooth",
         });
         setImageAtTop(targetPage > 0);
+        setShowFooter(targetPage === 3); // Show footer only on page 4 (index 3)
 
         setTimeout(() => {
           isScrollingRef.current = false;
-        }, 600);
+        }, 1200);
       }
     };
 
@@ -142,6 +150,7 @@ function Home() {
   }, []);
 
   return (
+    <>
     <Box
       ref={containerRef}
       className="home-container"
@@ -150,6 +159,8 @@ function Home() {
         height: "100vh",
         overflowY: "auto",
         overflowX: "hidden",
+        scrollBehavior: "smooth",
+        transition: "all 0.8s cubic-bezier(0.4, 0, 0.2, 1)",
         "&::-webkit-scrollbar": {
           display: "none",
         },
@@ -178,20 +189,32 @@ function Home() {
           autoPlay
           loop
           muted
+          initial={{ 
+            top: "auto",
+            bottom: "0",
+            transform: "translate(-50%, 50%) scale(0.1)"
+          }}
           style={{
-            width: "80vw",
+            width: "83vw",
             borderRadius: "50%",
             position: "fixed",
             left: "50%",
-            zIndex: 0,
+            zIndex: 0, 
             objectFit: "cover",
           }}
           animate={
             imageAtTop
-              ? { top: "7%", bottom: "auto", transform: "translate(-50%, -50%)" }
-              : { top: "auto", bottom: "0", transform: "translate(-50%, 50%)" }
+              ? { top: "7%", bottom: "auto", transform: "translate(-50%, -50%) scale(1)" }
+              : { top: "auto", bottom: "0", transform: "translate(-50%, 50%) scale(1)" }
           }
-          transition={{ duration: 0.6, ease: "easeInOut" }}
+          transition={{ 
+            duration: imageAtTop ? 0.6 : 0.5,
+            ease: "easeOut",
+            scale: {
+              duration: 0.5,
+              ease: [0.34, 1.56, 0.64, 1]
+            }
+          }}
         >
           <source src={bhvid} type="video/mp4" />
         </motion.video>
@@ -222,55 +245,64 @@ function Home() {
             paddingRight: showResult ? "24px" : "0"
           }}
         >
-          <Typography
-            variant="h3"
-            gutterBottom
-            sx={{ 
-              color: "primary.main", 
-              mb: 4, 
-              fontWeight: "bold",
-              textAlign: showResult ? "left" : "center"
-            }}
+          <motion.div
+            style={{ marginTop: "-250px" }}  // Increased negative margin to move heading higher
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
           >
-            Exoplanet Discovery
-          </Typography>
-
-          <Typography 
-            variant="h6" 
-            sx={{ 
-              mb: 4, 
-              color: "text.secondary",
-              textAlign: showResult ? "left" : "center"
-            }}
-          >
-            Search and explore planets across K2, TOI, and CUM datasets
-          </Typography>
-
-          <Box sx={{ display: "flex", gap: 2, mb: 4 }}>
-            <TextField
-              fullWidth
-              variant="outlined"
-              placeholder="Enter planet name..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              onKeyPress={(e) => e.key === "Enter" && handleSearch()}
-              disabled={loading}
-            />
-            <Button
-              variant="contained"
-              onClick={handleSearch}
-              disabled={loading || !searchTerm.trim()}
-              sx={{ minWidth: "120px", height: "56px" }}
+            <Typography
+              variant="h2"
+              gutterBottom
+              sx={{ 
+                color: "primary.main", 
+                mb: 1.5,  // Reduced bottom margin
+                fontWeight: "bold",
+                textAlign: showResult ? "left" : "center",
+                fontSize: "4rem" 
+              }}
             >
-              {loading ? (
-                <CircularProgress size={24} />
-              ) : (
-                <>
-                  <Search sx={{ mr: 1 }} />
-                  Search
-                </>
-              )}
-            </Button>
+              Exoplanet Discovery
+            </Typography>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.8, delay: 1.2 }}
+          >
+
+          </motion.div>
+
+          <Box sx={{ display: "flex", gap: 2, mb: 4, mt: 15 }}>
+
+            
+                <TextField
+                  fullWidth
+                  variant="outlined"
+                  placeholder="Enter planet name..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onKeyPress={(e) => e.key === "Enter" && handleSearch()}
+                  disabled={loading}
+                />
+
+
+              <Button
+                variant="contained"
+                onClick={handleSearch}
+                disabled={loading || !searchTerm.trim()}
+                sx={{ minWidth: "120px", height: "56px" }}
+              >
+                {loading ? (
+                  <CircularProgress size={24} />
+                ) : (
+                  <>
+                    <Search sx={{ mr: 1 }} />
+                    Search
+                  </>
+                )}
+              </Button>
           </Box>
         </motion.div>
 
@@ -297,6 +329,8 @@ function Home() {
       <Page3 />
       <Page4 />
     </Box>
+    {showFooter && <Footer />}
+  </>
   );
 }
 
