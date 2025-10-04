@@ -55,7 +55,7 @@ const PlanetResult = ({ result, isVisible, onClose }) => {
               <Box sx={{ p: 2, borderBottom: '1px solid', borderColor: 'grey.300', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Box>
                   <Typography variant="h5" sx={{ color: 'text.primary', fontWeight: 'bold' }}>
-                    {result.data.pl_name || result.data.hostname || result.data.toi || 'Unknown Planet'}
+                    {result.data.pl_name || result.data.hostname || result.data.toi || result.data.kepler_name || result.data.kepoi_name || result.data.kepid || 'Unknown Planet'}
                   </Typography>
                   <Typography variant="subtitle1" sx={{ color: 'text.secondary' }}>
                     Dataset: {result.dataset.toUpperCase()}

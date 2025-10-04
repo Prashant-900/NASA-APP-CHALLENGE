@@ -28,7 +28,7 @@ function Planet3D({ planetData }) {
     } else {
       if (planetData.hostname !== undefined) datasetType = "k2";
       else if (planetData.toi !== undefined) datasetType = "toi";
-      else if (planetData.kepler_name !== undefined) datasetType = "cum";
+      else if (planetData.kepler_name !== undefined) datasetType = "kepler";
     }
 
     let planetRadius, planetWeight, planetName, planetDistance;
@@ -50,11 +50,15 @@ function Planet3D({ planetData }) {
         planetWeight = null;
         planetDistance = planetData.st_dist || null;
         planetName = planetData.toi || null;
-      } else if (datasetType === 'cum') {
-        planetRadius = planetData.kep_srad || null;
-        planetWeight = null;
-        planetDistance = planetData.sy_dist || null;
-        planetName = planetData.kepler_name || null;
+      } else if (datasetType === 'kepler') {
+        // Kepler table uses koi_prad (planet radius) and koi_srad (stellar radius)
+        // Provide multiple fallbacks because different imports/exports/wrappers may use
+        // slightly different column names (koi_prad, kep_srad, pl_rade)
+        planetRadius = planetData.koi_prad ?? planetData.kep_srad ?? planetData.pl_rade ?? null;
+        // Kepler rows usually don't have pl_bmasse; leave mass null unless available
+        planetWeight = planetData.pl_bmasse ?? planetData.koi_bmasse ?? null;
+        planetDistance = planetData.sy_dist ?? planetData.st_dist ?? null;
+        planetName = planetData.kepler_name ?? planetData.kepoi_name ?? planetData.kepid ?? null;
       } else {
         planetRadius = 1;
         planetWeight = null;

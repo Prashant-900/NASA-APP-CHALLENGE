@@ -359,17 +359,16 @@ function Home() {
                   <List dense>
                     {suggestions.map((s, idx) => (
                       <ListItem
-                        key={`${s}-${idx}`}
-                        button
-                        onClick={() => {
-                          setSearchTerm(s);
-                          setSuggestions([]);
-                          // Optionally trigger search immediately when a suggestion is clicked
-                          handleSearch();
-                        }}
-                      >
-                        <ListItemText primary={s} />
-                      </ListItem>
+                          key={`${s}-${idx}`}
+                          button
+                          onClick={() => {
+                            // Only populate the input and hide suggestions — don't auto-search
+                            setSearchTerm(s);
+                            setSuggestions([]);
+                          }}
+                        >
+                          <ListItemText primary={s} />
+                        </ListItem>
                     ))}
                   </List>
                 </Paper>
