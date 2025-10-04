@@ -21,6 +21,7 @@ import Page2 from "./page2";
 import Page3 from "./page3";
 import Page4 from "./page4";
 import Page5 from "./page5";
+import Page6 from "./page6";
 
 const allValues = [
   "BD+20 594",
@@ -113,8 +114,8 @@ function Home() {
       const pageHeight = window.innerHeight;
       const currentPage = Math.floor(scrollY / pageHeight);
       
-      // Allow free scrolling on Page4 footer (index 4) and beyond
-      if (scrollY >= pageHeight * 4) {
+      // Allow free scrolling on Page4 footer (index 5) and beyond
+      if (scrollY >= pageHeight * 5) {
         // Let natural scrolling happen in the footer area
         setImageAtTop(true);
         return;
@@ -125,8 +126,8 @@ function Home() {
 
       let targetPage;
       if (e.deltaY > 0) {
-        // Scroll down - go to next page (up to index 4)
-        targetPage = Math.min(currentPage + 1, 4);
+        // Scroll down - go to next page (up to index 5)
+        targetPage = Math.min(currentPage + 1, 5);
       } else {
         // Scroll up - go to previous page
         targetPage = Math.max(currentPage - 1, 0);
@@ -159,8 +160,8 @@ function Home() {
       const pageHeight = window.innerHeight;
       const currentPage = Math.floor(scrollY / pageHeight);
       
-      // Allow free scrolling on Page4 footer (index 4) and beyond
-      if (scrollY >= pageHeight * 4) {
+      // Allow free scrolling on Page4 footer (index 5) and beyond
+      if (scrollY >= pageHeight * 5) {
         setImageAtTop(true);
         return;
       }
@@ -171,8 +172,8 @@ function Home() {
 
         let targetPage;
         if (diff > 0) {
-          // Swipe up - go to next page (up to index 4)
-          targetPage = Math.min(currentPage + 1, 4);
+          // Swipe up - go to next page (up to index 5)
+          targetPage = Math.min(currentPage + 1, 5);
         } else {
           // Swipe down - go to previous page
           targetPage = Math.max(currentPage - 1, 0);
@@ -414,6 +415,7 @@ function Home() {
       <Page5 />
       <Page2 />
       <Page3 />
+      <Page6 />
       <Page4 />
     </Box>
   );
