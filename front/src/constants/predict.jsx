@@ -15,6 +15,9 @@ export const PREDICTION_CONSTANTS = {
     "dec",
     "st_mass",
     "st_met",
+    'disc_year',
+    'pl_radeerr1',
+    'pl_radeerr2'
   ],
 
   K2_OPTIONAL_FEATURES: [
@@ -31,9 +34,6 @@ export const PREDICTION_CONSTANTS = {
     "sy_vmagerr1",
     "sy_kmag",
     "discoverymethod",
-    "disc_year",
-    "pl_radeerr1",
-    "pl_radeerr2",
   ],
 
   // Kepler Model Features
