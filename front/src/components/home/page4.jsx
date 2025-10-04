@@ -19,7 +19,7 @@ function Page4() {
       justifyContent: 'flex-start',
       alignItems: 'center',
       gap: 6,
-      paddingTop: '10vh',
+      paddingTop: '15vh',
       paddingBottom: 0,
       px: 0,
     }}>
@@ -120,7 +120,7 @@ function Page4() {
       </Box>
       
       {/* Footer integrated into Page4 */}
-      <Box sx={{ width: '100vw', mt: 8, ml: 0, mr: 0 }}>
+      <Box sx={{ width: '100vw', mt: 35, ml: 0, mr: 0 }}>
         <Footer />
       </Box>
     </Box>
