@@ -15,7 +15,7 @@ def search_planet():
         tables_to_search = [
             {'name': 'k2', 'column': 'hostname'},
             {'name': 'toi', 'column': 'toi'},
-            {'name': 'kepler', 'column': 'pl_name'}
+            {'name': 'kepler', 'column': 'kepler_name'}
         ]
         
         for table_info in tables_to_search:
