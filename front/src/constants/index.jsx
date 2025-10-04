@@ -16,6 +16,6 @@ export const PAGINATION = {
 };
 
 export const API_ENDPOINTS = {
-  BASE_URL: 'https://nasa-app-challenge-prob.onrender.com/api'
+  BASE_URL: 'https://lala.com/api'
 };
 
