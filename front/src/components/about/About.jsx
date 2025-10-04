@@ -17,6 +17,7 @@ const About = () => {
       <StarfieldBackground />
       <Container maxWidth="lg" sx={{ py: 4, position: 'relative', zIndex: 1 }}>
       <Box sx={{ textAlign: 'center', mb: 4 }}>
+        <img src="/logo.png" alt="Logo" style={{ height: '100px', width: '110px', marginBottom: '16px', display: 'block', margin: '0 auto 16px auto' }} />
         <Typography variant="h3" component="h1" gutterBottom sx={{ color: 'text.primary', fontWeight: 'bold' }}>
           Our Team
         </Typography>

@@ -176,7 +176,10 @@ function App() {
       <Box sx={{ backgroundColor: 'background.default', height: '100vh', display: 'flex', flexDirection: 'column' }}>
         <AppBar position="static" elevation={0} sx={{ borderBottom: '1px solid', borderColor: 'grey.300', zIndex:1 }}>
           <Toolbar sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", backgroundColor: 'background.default' }}>
-            <Typography variant="h6" sx={{ color: 'primary.main' }}>Exoplanet Detection Dashboard</Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <img src="/logo.png" alt="Logo" style={{ height: '48px', width: '58px' }} />
+              <Typography variant="h6" sx={{ color: 'primary.main' }}>ExoQuest</Typography>
+            </Box>
             <Tabs value={selectedTab} onChange={handleTabChange} TabIndicatorProps={{ sx: { backgroundColor: 'primary.main' } }}>
               <Tab label="Home" />
               <Tab label="Data Explorer" />
