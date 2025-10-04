@@ -194,15 +194,27 @@ const QueryResultsTab = forwardRef(({ scrollToMessage }, ref) => {
                           containsPlotlyDiv: response.plot.includes('plotly'),
                           containsHTML: response.plot.includes('<html>')
                         })}
-                        <div 
-                          dangerouslySetInnerHTML={{ __html: response.plot }}
-                          style={{ 
-                            width: '100%', 
-                            minHeight: '400px',
-                            backgroundColor: '#f9f9f9',
-                            border: '1px dashed #ccc'
-                          }}
-                        />
+                        {response.plot.startsWith('http') ? (
+                          <img 
+                            src={response.plot}
+                            alt="Data Visualization"
+                            style={{ 
+                              maxWidth: '100%',
+                              height: 'auto',
+                              borderRadius: '4px'
+                            }}
+                          />
+                        ) : (
+                          <div 
+                            dangerouslySetInnerHTML={{ __html: response.plot }}
+                            style={{ 
+                              width: '100%', 
+                              minHeight: '400px',
+                              backgroundColor: '#f9f9f9',
+                              border: '1px dashed #ccc'
+                            }}
+                          />
+                        )}
                       </Box>
                     </Box>
                   )}

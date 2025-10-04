@@ -5,6 +5,15 @@ import tempfile
 import os
 from typing import Dict, Any
 import plotly.io as pio
+import cloudinary
+import cloudinary.uploader
+
+# Configure Cloudinary
+cloudinary.config(
+    cloud_name="dtzsk95mv",
+    api_key="596468531838973",
+    api_secret="Eo59sqV7iMiQzumO45gdE-TOfcs"
+)
 
 def execute_plot_code(python_code: str, df_data: pd.DataFrame) -> str:
     """Secure plot generation without code execution"""
@@ -46,16 +55,9 @@ def execute_plot_code(python_code: str, df_data: pd.DataFrame) -> str:
             'fig': None
         }
         
-        # Only allow specific plotly functions (more flexible matching)
-        allowed_functions = [
-            'px.histogram', 'px.scatter', 'px.line', 'px.box', 'px.bar',
-            'px.violin', 'px.strip', 'px.density_heatmap', 'px.scatter_matrix'
-        ]
-        
-        # Check if code contains plotly functions (more lenient check)
-        has_plotly_func = any(func.split('.')[1] in cleaned_code for func in allowed_functions)
-        if not has_plotly_func:
-            print(f"No allowed plotly functions found in code: {cleaned_code}")
+        # Check if code contains plotly functions
+        if not ('px.' in cleaned_code or 'go.' in cleaned_code):
+            print(f"No plotly functions found in code: {cleaned_code}")
             return ""
         
         # Execute in restricted environment
@@ -70,8 +72,16 @@ def execute_plot_code(python_code: str, df_data: pd.DataFrame) -> str:
                     showlegend=True,
                     hovermode='closest'
                 )
-                html = pio.to_html(fig, include_plotlyjs='cdn')
-                return html
+                # Generate image and upload to Cloudinary
+                img_bytes = pio.to_image(fig, format='png', width=800, height=500)
+                
+                upload_result = cloudinary.uploader.upload(
+                    img_bytes,
+                    resource_type="image",
+                    upload_preset="ml_default"
+                )
+                
+                return upload_result['secure_url']
             else:
                 return ""
                 
@@ -84,21 +94,27 @@ def execute_plot_code(python_code: str, df_data: pd.DataFrame) -> str:
         return ""
 
 def _clean_plot_code(code: str) -> str:
-    """Clean plot code by removing imports and unnecessary statements"""
+    """Clean plot code by removing imports and function definitions"""
     lines = code.split('\n')
     cleaned_lines = []
     
     for line in lines:
-        line = line.strip()
+        stripped = line.strip()
         # Skip import statements
-        if line.startswith('import '):
+        if stripped.startswith('import '):
+            continue
+        # Skip function definitions
+        if stripped.startswith('def '):
+            continue
+        # Skip return statements
+        if stripped.startswith('return '):
             continue
         # Skip fig.show() calls
-        if 'fig.show(' in line:
+        if 'fig.show(' in stripped:
             continue
         # Keep other lines
-        if line:
-            cleaned_lines.append(line)
+        if stripped:
+            cleaned_lines.append(stripped)
     
     return '\n'.join(cleaned_lines)
 

@@ -93,7 +93,7 @@ rowupdate TIMESTAMP
 pl_pubdate TEXT
 releasedate TIMESTAMP'''
 
-cum_col='''kepid BIGINT
+kepler_col='''kepid BIGINT
 kepoi_name TEXT
 kepler_name TEXT
 koi_disposition TEXT

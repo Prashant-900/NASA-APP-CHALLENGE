@@ -3,7 +3,7 @@ from typing import Dict, Any, List
 from .config import Config
 from .plot_tools import execute_plot_code, execute_query_dataframe, generate_plot_code
 from .web_search import WebSearchTool
-from .column_info import get_column_info
+
 import json
 import re
 import pandas as pd
@@ -17,12 +17,11 @@ class GeminiLLM:
         self.tools = {
             'execute_sql': self._execute_sql_tool,
             'web_search': self._web_search_tool,
-            'plot_graph': self._plot_graph_tool,
-            'get_columns': self._get_columns_tool
+            'plot_graph': self._plot_graph_tool
         }
     
     def _execute_sql_tool(self, query: str, db) -> Dict[str, Any]:
-        """Execute SQL query and return results"""
+        """Execute read-only SQL queries for data analysis"""
         try:
             data = db.execute_custom_query(query)
             return {"success": True, "data": data, "count": len(data)}
@@ -70,22 +69,7 @@ class GeminiLLM:
                 "error": str(e)
             }
     
-    def _get_columns_tool(self, table: str) -> Dict[str, Any]:
-        """Get detailed column information for a table"""
-        try:
-            column_info = get_column_info(table)
-            return {
-                "success": True,
-                "columns": column_info['columns'],
-                "descriptions": column_info['descriptions'],
-                "count": column_info['count']
-            }
-        except Exception as e:
-            return {
-                "success": False,
-                "error": str(e),
-                "columns": []
-            }
+
     
     def process_with_tools(self, user_message: str, table: str, db) -> dict:
         """Process user message using LLM with tools"""
@@ -93,43 +77,48 @@ class GeminiLLM:
             # Get table columns
             columns = db.get_table_columns(table) if table else []
             
+            # Get column info from pos_col.py
+            column_info = ""
+            try:
+                from .pos_col import k2_col, kepler_col, toi_col
+                table_cols = {
+                    'k2': k2_col,
+                    'kepler': kepler_col,
+                    'toi': toi_col
+                }
+                if table in table_cols:
+                    column_info = f"\nColumn types:\n{table_cols[table]}"
+            except:
+                pass
+            
             # Create system prompt with available tools
-            system_prompt = f"""You are an AI assistant with access to these tools:
-1. execute_sql(query) - Execute SQL queries on database
-2. plot_graph(plot_code, data) - Create plots using plotly
-3. web_search(query) - Search web for information about terms/concepts
+            system_prompt = f"""You are a research assistant for exoplanet detection and analysis. Do exactly what the user asks.
 
-Available table: {table}
-Available columns: {', '.join(columns)}
+Available tools:
+1. execute_sql(query) - Execute queries to get data
+2. plot_graph(plot_code, data) - Create any plot with full Python/plotly capabilities
+3. web_search(query) - Search for information
+
+Dataset: {table}{column_info}
 
 User request: {user_message}
 
-IMPORTANT RULES:
-- Never use emojis in responses
-- If user asks for "plot", "graph", "chart", "histogram", "scatter", "visualization" - ALWAYS use plot_graph
-- If user asks for "relation", "relationship", "correlation" between columns - use plot_graph with scatter plot
-- If user mentions specific column names and wants to see them plotted - use plot_graph
-- Only show raw data if user specifically asks for "data", "table", "records", "list"
-
-Process this request step by step:
-1. If user asks about a term/concept you don't know, use web_search to find information
-2. If user wants to plot/visualize data, first execute SQL to get data, then create plot
-3. If user wants to see data, execute SQL query
-4. Always provide AI response explaining what you did
-
-For plots, use this format for plot_code:
-- Histogram: fig = px.histogram(data, x='column_name', nbins=30, title='Title')
-- Scatter: fig = px.scatter(data, x='col1', y='col2', title='Title')
-- Log scale: add log_y=True for log scale on Y axis
+IMPORTANT: If user asks for any visualization or plot - ALWAYS use plot_graph after getting data.
 
 Respond in JSON format:
 {{
     "steps": [
-        {{"action": "execute_sql", "query": "SELECT ...", "reasoning": "why"}},
-        {{"action": "plot_graph", "code": "fig = px.histogram(...)", "reasoning": "why"}}
+        {{"action": "execute_sql", "query": "SELECT ..."}},
+        {{"action": "plot_graph", "code": "fig = px.pie(df, values='count', names='category', title='Title')"}}
     ],
-    "response": "AI explanation of results"
-}}"""
+    "response": "Plot created"
+}}
+
+For plot_graph code, ONLY use direct plotly express calls like:
+- fig = px.pie(df, values='col1', names='col2', title='Title')
+- fig = px.scatter(df, x='col1', y='col2', title='Title')
+- fig = px.histogram(df, x='col1', title='Title')
+Do NOT use function definitions or custom functions."""
 
             # Get LLM response
             response = self.model.generate_content(system_prompt)
@@ -231,7 +220,7 @@ Respond in JSON format:
                         }
             
             # Handle plotting requests
-            if any(word in message_lower for word in ['plot', 'hist', 'graph', 'chart', 'scatter', 'visualization', 'relation']):
+            if any(word in message_lower for word in ['plot', 'hist', 'graph', 'chart', 'scatter', 'visualization', 'relation', 'pie', 'bar', 'line', 'box', 'violin', 'heatmap', 'distribution']):
                 # Extract column names from message
                 mentioned_cols = [col for col in columns if col.lower() in message_lower]
                 

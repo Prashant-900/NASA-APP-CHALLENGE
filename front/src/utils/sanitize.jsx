@@ -69,7 +69,7 @@ export const sanitizeObject = (obj, maxDepth = 3) => {
 
 // Validate table names
 export const validateTableName = (tableName) => {
-  const allowedTables = ['k2', 'toi', 'cum'];
+  const allowedTables = ['k2', 'toi', 'kepler'];
   return allowedTables.includes(tableName) ? tableName : null;
 };
 
