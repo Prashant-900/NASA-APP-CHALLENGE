@@ -20,4 +20,5 @@ register_routes(app)
 if __name__ == '__main__':
     import os
     debug_mode = os.getenv('FLASK_DEBUG', 'False').lower() == 'true'
-    app.run(debug=debug_mode, port=5000, host='127.0.0.1')
+    port = int(os.getenv('PORT',5000))
+    app.run(debug=False, port=port, host='0.0.0.0')

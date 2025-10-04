@@ -50,7 +50,6 @@ export const PREDICTION_CONSTANTS = {
     st_met: 'Stellar Metallicity',
     st_logg: 'Stellar Log g',
     ra: 'Right Ascension (deg)',
-    dec: 'Declination (deg)',
     sy_dist: 'System Distance (pc)',
     sy_disterr1: 'System Distance Error 1',
     sy_vmag: 'V Magnitude',
