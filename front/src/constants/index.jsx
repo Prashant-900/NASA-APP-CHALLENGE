@@ -16,6 +16,6 @@ export const PAGINATION = {
 };
 
 export const API_ENDPOINTS = {
-  BASE_URL: 'https://nasa-app-challenge-dx2h.onrender.com/api'
+  BASE_URL: 'https://2cttb3ls-5000.inc1.devtunnels.ms/api'
 };
 

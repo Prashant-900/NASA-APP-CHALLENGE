@@ -109,7 +109,7 @@ const News = () => {
             }
           }}
         >
-          Refresh News
+          Refresh
         </Button>
       </Box>
 
