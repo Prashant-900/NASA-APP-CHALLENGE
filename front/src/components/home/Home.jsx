@@ -5,6 +5,10 @@ import {
   Button,
   Typography,
   CircularProgress,
+  Paper,
+  List,
+  ListItem,
+  ListItemText,
 } from "@mui/material";
 import { Search } from "@mui/icons-material";
 import { motion } from "framer-motion";
@@ -18,7 +22,35 @@ import Page3 from "./page3";
 import Page4 from "./page4";
 import Page5 from "./page5";
 
-import styles from './home.module.css';
+const allValues = [
+  "BD+20 594",
+  "BD+20 594",
+  "BD+20 594",
+  "EPIC 201111557",
+  "EPIC 201111557",
+  "EPIC 201126503",
+  "EPIC 201127519",
+  "EPIC 201176672",
+  "EPIC 201127519",
+  "EPIC 201147085",
+  "1000.01",
+  "1001.01",
+  "1002.01",
+  "1003.01",
+  "1004.01",
+  "1005.01",
+  "1006.01",
+  "1007.01",
+  "1008.01",
+  "1009.01",
+  "Kepler-227 b",
+  "Kepler-227 c",
+  "Kepler-664 b",
+  "Kepler-228 d",
+  "Kepler-228 c",
+  "Kepler-228 b",
+  "Kepler-229 c"
+];
 
 
 function Home() {
@@ -27,9 +59,23 @@ function Home() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [showResult, setShowResult] = useState(false);
+  const [suggestions, setSuggestions] = useState([]);
   const [imageAtTop, setImageAtTop] = useState(false);
   const containerRef = useRef(null);
   const isScrollingRef = useRef(false);
+
+  // Helper: pick up to `count` random unique suggestions from the provided values
+  const pickRandomSuggestions = (values, count = 5) => {
+    if (!Array.isArray(values) || values.length === 0) return [];
+    // Use unique values to avoid showing duplicates
+    const unique = Array.from(new Set(values));
+    // Fisher-Yates shuffle
+    for (let i = unique.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [unique[i], unique[j]] = [unique[j], unique[i]];
+    }
+    return unique.slice(0, Math.min(count, unique.length));
+  };
 
   const handleSearch = async () => {
     if (!searchTerm.trim()) return;
@@ -283,35 +329,68 @@ function Home() {
 
           </motion.div>
 
-          <Box sx={{ display: "flex", gap: 2, mb: 4, mt: 15 }}>
+          <Box sx={{ display: "flex", gap: 2, mb: 4, mt: 15, alignItems: "flex-start" }}>
+            <Box sx={{ flex: 1, position: "relative" }}>
+              <TextField
+                fullWidth
+                variant="outlined"
+                placeholder="Enter planet name..."
+                value={searchTerm}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setSearchTerm(v);
+                  // show suggestions when user starts typing (has at least one non-space char)
+                  if (v.trim().length > 0 && !loading && !showResult) {
+                    setSuggestions(pickRandomSuggestions(allValues, 5));
+                  } else {
+                    setSuggestions([]);
+                  }
+                }}
+                onKeyPress={(e) => e.key === "Enter" && handleSearch()}
+                disabled={loading}
+              />
 
-            
-                <TextField
-                  fullWidth
-                  variant="outlined"
-                  placeholder="Enter planet name..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  onKeyPress={(e) => e.key === "Enter" && handleSearch()}
-                  disabled={loading}
-                />
+              {/* Suggestions list shown while typing */}
+              {suggestions.length > 0 && !loading && !showResult && (
+                <Paper
+                  elevation={6}
+                  sx={{ mt: 1, maxHeight: 220, overflow: "auto" }}
+                >
+                  <List dense>
+                    {suggestions.map((s, idx) => (
+                      <ListItem
+                        key={`${s}-${idx}`}
+                        button
+                        onClick={() => {
+                          setSearchTerm(s);
+                          setSuggestions([]);
+                          // Optionally trigger search immediately when a suggestion is clicked
+                          handleSearch();
+                        }}
+                      >
+                        <ListItemText primary={s} />
+                      </ListItem>
+                    ))}
+                  </List>
+                </Paper>
+              )}
+            </Box>
 
-
-              <Button
-                variant="contained"
-                onClick={handleSearch}
-                disabled={loading || !searchTerm.trim()}
-                sx={{ minWidth: "120px", height: "56px" }}
-              >
-                {loading ? (
-                  <CircularProgress size={24} />
-                ) : (
-                  <>
-                    <Search sx={{ mr: 1 }} />
-                    Search
-                  </>
-                )}
-              </Button>
+            <Button
+              variant="contained"
+              onClick={handleSearch}
+              disabled={loading || !searchTerm.trim()}
+              sx={{ minWidth: "120px", height: "56px" }}
+            >
+              {loading ? (
+                <CircularProgress size={24} />
+              ) : (
+                <>
+                  <Search sx={{ mr: 1 }} />
+                  Search
+                </>
+              )}
+            </Button>
           </Box>
         </motion.div>
 
