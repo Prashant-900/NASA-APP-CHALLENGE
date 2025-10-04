@@ -7,7 +7,13 @@ const About = () => {
   const theme = useTheme();
   
   return (
-    <Box sx={{ position: 'relative', minHeight: '100vh' }}>
+    <Box sx={{ 
+      position: 'relative', 
+      minHeight: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center'
+    }}>
       <StarfieldBackground />
       <Container maxWidth="lg" sx={{ py: 4, position: 'relative', zIndex: 1 }}>
       <Box sx={{ textAlign: 'center', mb: 4 }}>

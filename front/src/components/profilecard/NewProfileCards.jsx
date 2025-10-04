@@ -22,7 +22,7 @@ const teamMembers = [
     linkedin: 'https://www.linkedin.com/in/nikhil-prakash-509869326/',
     github: 'https://github.com/Coding-yeager',
     twitter: 'https://instagram.com/nikhilprakash7684',
-    description: 'Specializes in analyzing stellar data and characterizing exoplanetary systems.'
+    description: 'Extracted meaningful features from astronomical datasets.'
   },
   {
     name: 'Hardik Kushwaha',
@@ -31,7 +31,7 @@ const teamMembers = [
     linkedin: 'https://www.linkedin.com/in/hardik-kushwah-54705a377/',
     github: 'https://github.com/Hardik-2211',
     twitter: 'https://www.instagram.com/sassy_boy_hunk',
-    description: 'Builds robust applications for processing and visualizing astronomical data.'
+    description: 'Analyzed exoplanet data to identify trends and patterns.'
   },
   {
     name: 'Basil Khan',
@@ -40,7 +40,7 @@ const teamMembers = [
     linkedin: 'https://www.linkedin.com/in/basil-khan-b7714b321/',
     github: 'https://github.com/Basilkhan1718',
     twitter: 'https://www.instagram.com/basilkhan78/',
-    description: 'Fine Tunes machine learning models for enhanced exoplanet detection accuracy.'
+    description: 'Fine Tuned machine learning models for enhanced exoplanet detection accuracy.'
   },
   {
     name: 'Prashant Suthar',
@@ -49,7 +49,7 @@ const teamMembers = [
     linkedin: 'https://linkedin.com',
     github: 'https://github.com/Prashant-900',
     twitter: 'https://instagram.com/ehhbefr',
-    description: 'Manages data pipelines for RAG systems and infrastructure for large-scale astronomical datasets.'
+    description: 'Managed data pipelines for RAG systems and infrastructure for large-scale astronomical datasets.'
   },
   {
     name: 'Aryan Garg',
@@ -58,7 +58,7 @@ const teamMembers = [
     linkedin: 'https://www.linkedin.com/in/aryan-garg-jeezzzzzz/',
     github: 'https://github.com/ar-garg',
     twitter: 'https://www.instagram.com/aryan_.garg_',
-    description: 'Focuses on statistical analysis of exoplanet detection methods.'
+    description: 'Focused on statistical analysis of exoplanet detection methods.'
   }
 ];
 

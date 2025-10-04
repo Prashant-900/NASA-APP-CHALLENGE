@@ -16,6 +16,7 @@ import bhvid from "../../assets/blackhole.webm";
 import Page2 from "./page2";
 import Page3 from "./page3";
 import Page4 from "./page4";
+import Page5 from "./page5";
 
 import styles from './home.module.css';
 
@@ -66,9 +67,9 @@ function Home() {
       const pageHeight = window.innerHeight;
       const currentPage = Math.floor(scrollY / pageHeight);
       
-      // Allow free scrolling on Page4 (index 3) and beyond to access footer
-      if (scrollY >= pageHeight * 3) {
-        // Let natural scrolling happen on Page4 and footer
+      // Allow free scrolling on Page4 footer (index 4) and beyond
+      if (scrollY >= pageHeight * 4) {
+        // Let natural scrolling happen in the footer area
         setImageAtTop(true);
         return;
       }
@@ -78,8 +79,8 @@ function Home() {
 
       let targetPage;
       if (e.deltaY > 0) {
-        // Scroll down - go to next page
-        targetPage = Math.min(currentPage + 1, 3);
+        // Scroll down - go to next page (up to index 4)
+        targetPage = Math.min(currentPage + 1, 4);
       } else {
         // Scroll up - go to previous page
         targetPage = Math.max(currentPage - 1, 0);
@@ -112,8 +113,8 @@ function Home() {
       const pageHeight = window.innerHeight;
       const currentPage = Math.floor(scrollY / pageHeight);
       
-      // Allow free scrolling on Page4 (index 3) and beyond to access footer
-      if (scrollY >= pageHeight * 3) {
+      // Allow free scrolling on Page4 footer (index 4) and beyond
+      if (scrollY >= pageHeight * 4) {
         setImageAtTop(true);
         return;
       }
@@ -124,8 +125,8 @@ function Home() {
 
         let targetPage;
         if (diff > 0) {
-          // Swipe up - go to next page
-          targetPage = Math.min(currentPage + 1, 3);
+          // Swipe up - go to next page (up to index 4)
+          targetPage = Math.min(currentPage + 1, 4);
         } else {
           // Swipe down - go to previous page
           targetPage = Math.max(currentPage - 1, 0);
@@ -332,6 +333,7 @@ function Home() {
         )}
       </Box>
 
+      <Page5 />
       <Page2 />
       <Page3 />
       <Page4 />
