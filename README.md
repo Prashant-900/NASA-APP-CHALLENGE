@@ -233,4 +233,4 @@ curl -X POST http://localhost:5000/api/chat \
 
 ## 📄 License
 
-This project was built for the **NASA Space Apps Challenge** and is intended for educational and research use.
+This project was built for the **NASA Space Apps Challenge 2025** and is intended for educational and research use.
